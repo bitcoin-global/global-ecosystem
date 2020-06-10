@@ -108,7 +108,7 @@ info() {
 }
 
 warn() {
-  _message "${V_BOLD_YELLOW}WARNING " "$*"
+  _message "${V_BOLD_YELLOW}WARN    " "$*"
 }
 
 error() {
@@ -756,7 +756,7 @@ failboat() {
     ^^^^^^^^^^^^^^^^^^^^
 BOAT
   echo -e "${V_VIDOFF}"
-  die "$* failed"
+  exit 1
 }
 
 # The binfmt_misc support in the kernel is required.
@@ -774,4 +774,14 @@ clean_qemu_static() {
     amd64-usr) return 0;;
     *) die "Unsupported arch" ;;
   esac
+}
+
+kill_if_empty() {
+  local param_name="$1"
+  local param_value="$2"
+  if [ -z $param_value ];
+  then
+      error "Parameter '$param_name' is required, exiting..."
+      failboat
+  fi
 }
