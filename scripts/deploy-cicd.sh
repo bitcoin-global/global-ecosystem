@@ -17,8 +17,8 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 
 ###############################################################################
 # ===================== REQUIREMENTS
-kill_if_empty "GITHUB_APP_ID" $GITHUB_APP_ID
-kill_if_empty "GITHUB_APP_SECRET" $GITHUB_APP_SECRET
+# kill_if_empty "GITHUB_APP_ID" $GITHUB_APP_ID
+# kill_if_empty "GITHUB_APP_SECRET" $GITHUB_APP_SECRET
 
 ###############################################################################
 # ===================== Creating secrets
@@ -36,8 +36,8 @@ rm session-signing-key.pub
 echo "admin" > postgresql-user
 echo "$(openssl rand -base64 24)" > postgresql-password
 
-echo $GITHUB_APP_ID > github-client-id
-echo $GITHUB_APP_SECRET > github-client-secret
+# echo $GITHUB_APP_ID > github-client-id
+# echo $GITHUB_APP_SECRET > github-client-secret
 
 printf "%s" "$(openssl rand -base64 24)" > encryption-key
 printf "%s" "$(openssl rand -base64 24)" > web-encryption-key
@@ -55,8 +55,8 @@ mv session-signing-key web/session-signing-key
 mv host-key web/host-key
 mv local-users web/local-users
 mv web-encryption-key web/encryption-key
-mv github-client-id web/github-client-id
-mv github-client-secret web/github-client-secret
+# mv github-client-id web/github-client-id
+# mv github-client-secret web/github-client-secret
 cp worker/worker-key-pub web/worker-key-pub
 
 # additional concourse secrets
