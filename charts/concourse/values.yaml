@@ -215,7 +215,7 @@ concourse:
     ##
     ## Example: http://ci.concourse-ci.org
     ##
-    externalUrl:
+    externalUrl: https://ci.bitcoin-global.dev
 
     encryption:
       ## Enable encryption of pipeline configuration. Encryption keys can be set via secrets
@@ -1440,7 +1440,7 @@ concourse:
       ## Driver to use for managing volumes.
       ## Possible values: detect, naive, btrfs, and overlay.
       ##
-      driver: naive
+      driver: overlay
 
       ## Path to btrfs binary
       ##
@@ -1688,7 +1688,7 @@ web:
       ## For minikube, set this to ClusterIP, elsewhere use LoadBalancer or NodePort
       ## Ref: https://kubernetes.io/docs/user-guide/services/#publishing-services---service-types
       ##
-      type: ClusterIP
+      type: LoadBalancer
 
       ## When using `web.service.api.type: LoadBalancer`, sets the user-specified load balancer IP.
       ## Example: 172.217.1.174
@@ -1729,7 +1729,7 @@ web:
       ## For minikube, set this to ClusterIP, elsewhere use LoadBalancer or NodePort
       ## Ref: https://kubernetes.io/docs/user-guide/services/#publishing-services---service-types
       ##
-      type: ClusterIP
+      type: NodePort
 
       ## When using `web.service.workerGateway.type: LoadBalancer`, sets the user-specified load balancer IP.
       ## Example: 172.217.1.174
@@ -2200,7 +2200,7 @@ secrets:
 
   ## List of `username:password` or `username:bcrypted_password` combinations for all your local concourse users.
   ##
-  localUsers: "test:test"
+  localUsers: "ThisIsntApplied:@^@@#!!sadawae2114[afs"
 
   ## The TLS certificate and private key for the web component to be able to terminate
   ## TLS connections.

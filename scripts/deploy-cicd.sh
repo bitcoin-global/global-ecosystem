@@ -51,10 +51,10 @@ mv worker-key worker/worker-key
 # web secrets
 mv session-signing-key web/session-signing-key
 mv host-key web/host-key
+mv local-users web/local-users
 cp worker/worker-key-pub web/worker-key-pub
 
 # other concourse secrets
-mv local-users concourse/local-users
 mv encryption-key concourse/encryption-key
 mv postgresql-password concourse/postgresql-password
 mv postgresql-user concourse/postgresql-user
@@ -78,7 +78,7 @@ kubectl create secret generic concourse-worker --from-file=$SECRET_FOLDER/worker
     --dry-run=client -o yaml | kubectl apply -f -
 kubectl create secret generic concourse-web --from-file=$SECRET_FOLDER/web/ \
     --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic concourse-main --from-file=$SECRET_FOLDER/concourse/ \
+kubectl create secret generic concourse-concourse --from-file=$SECRET_FOLDER/concourse/ \
     --dry-run=client -o yaml | kubectl apply -f -
 # rm -rf web/* worker/* concourse/*
 
