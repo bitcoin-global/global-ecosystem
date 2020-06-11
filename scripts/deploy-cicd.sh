@@ -16,53 +16,85 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 . "${SCRIPT_ROOT}/common.sh" || { echo "Unable to load common.sh"; exit 1; }
 
 # Install dependencies
-info "Installing dependencies...\n"
-sudo apt-get update
-sudo apt-get install -y build-essential zlibc zlib1g-dev ruby ruby-dev openssl libxslt1-dev libxml2-dev libssl-dev \
-    libreadline7 libreadline-dev libyaml-dev libsqlite3-dev sqlite3
+info "Installing dependencies..."
+sudo apt install -y xclip xsel
 
-info "\nInstalling CLIs...\n"
-if bosh -v; then
-    info "bosh found, skipping...\n"
-else
-    warn "bosh not found, installing...\n"
-    sudo wget "https://github.com/cloudfoundry/bosh-cli/releases/download/v6.2.1/bosh-cli-6.2.1-linux-amd64" -O /usr/local/bin/bosh
-    sudo chmod +x /usr/local/bin/bosh
-fi
+###############################################################################
+# ===================== Creating secrets
+###############################################################################
+info "Creating secrets..."
+SECRET_FOLDER="concourse-secrets"
+mkdir $SECRET_FOLDER || true
+cd $SECRET_FOLDER
 
-if control-tower -v; then
-    info "control-tower found, skipping...\n"
-else
-    warn "control-tower not found, installing...\n"
-    sudo wget "https://github.com/EngineerBetter/control-tower/releases/download/0.12.1/control-tower-linux-amd64" -O /usr/local/bin/control-tower
-    sudo chmod +x /usr/local/bin/control-tower
-fi
+ssh-keygen -t rsa -f host-key  -N '' -m PEM
+ssh-keygen -t rsa -f worker-key  -N '' -m PEM
+ssh-keygen -t rsa -f session-signing-key  -N '' -m PEM
+rm session-signing-key.pub
 
-# Deploy Concourse on GCP
-if [[ -z "${GOOGLE_APPLICATION_CREDENTIALS}" ]]; then
-  error "GOOGLE_APPLICATION_CREDENTIALS is required but not found, exiting..."
-fi
+echo $POSTGRESQL_USER > postgresql-user
+echo $POSTGRESQL_PASS > postgresql-password
 
-# Deployment configuration
-GCP_PROJECT=${GCP_PROJECT:-bitcoin-global-playground}
-ZONE=${ZONE:-europe-west1-b}
+# echo $GITHUB_APP_ID > github-client-id
+# echo $GITHUB_APP_SECRET > github-client-secret
 
-WORKERS=${WORKERS:-1}
-WORKER_SIZE=${WORKER_SIZE:-medium}
-WEB_SIZE=${WEB_SIZE:-small}
-DB_SIZE=${DB_SIZE:-small}
+printf "%s" "$(openssl rand -base64 24)" > encryption-key
+printf "%s:%s" "admin" "$(openssl rand -base64 24)" > local-users
 
-ENABLE_GLOBAL_RESOURCES=${ENABLE_GLOBAL_RESOURCES:-true}
+mkdir concourse web worker || true
 
-GITHUB_AUTH_CLIENT_ID=${GITHUB_AUTH_CLIENT_ID:-}
-GITHUB_AUTH_CLIENT_SECRET=${GITHUB_AUTH_CLIENT_SECRET:-}
+# worker secrets
+mv host-key.pub worker/host-key-pub
+mv worker-key.pub worker/worker-key-pub
+mv worker-key worker/worker-key
 
-PREEMPTIBLE=${PREEMPTIBLE:-true}
-SPOT=${SPOT:-true}
+# web secrets
+mv session-signing-key web/session-signing-key
+mv host-key web/host-key
+cp worker/worker-key-pub web/worker-key-pub
 
-warn "Deploying Concourse CI server, this may take up to 20 minutes..."
-control-tower deploy --iaas gcp $GCP_PROJECT
-control-tower info --iaas gcp $GCP_PROJECT
+# other concourse secrets
+mv local-users concourse/local-users
+mv encryption-key concourse/encryption-key
+mv postgresql-password concourse/postgresql-password
+mv postgresql-user concourse/postgresql-user
+cd ..
 
-info "No more tasks, exiting..."
-exit 0
+###############################################################################
+# ===================== Installing K8S dependencies
+###############################################################################
+info "Configuring Google dependencies and Kubernetes secrets..."
+
+# ===================== Ensure logged in to GCP
+./login.sh
+
+# ===================== Configuring GCP DNS configs
+./setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
+./dns-record.sh --name="dev-bitcoin-global" --domain="ci.bitcoin-global.dev" --type="CNAME"
+
+# ===================== Adding K8s secrets
+info "Adding secrets to K8s..."
+kubectl create secret generic concourse-worker --from-file=$SECRET_FOLDER/worker/ \
+    --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic concourse-web --from-file=$SECRET_FOLDER/web/ \
+    --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic concourse-main --from-file=$SECRET_FOLDER/concourse/ \
+    --dry-run=client -o yaml | kubectl apply -f -
+# rm -rf web/* worker/* concourse/*
+
+cat <<EOF | kubectl apply -f -
+apiVersion: networking.gke.io/v1beta2
+kind: ManagedCertificate
+metadata:
+  name: concourse-certs
+spec:
+  domains:
+    - bitcoin-global.dev
+    - ci.bitcoin-global.dev
+EOF
+
+# ===================== Installing Helm chart
+info "Installing Concourse helm chart..."
+helm repo add concourse https://concourse-charts.storage.googleapis.com/
+helm upgrade --version 11.1.0 -f ../charts/concourse/values.yaml concourse concourse/concourse \
+    --install --wait --timeout 40m0s --atomic

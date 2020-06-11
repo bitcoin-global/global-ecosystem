@@ -14,13 +14,13 @@ set -eo pipefail
 SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 . "${SCRIPT_ROOT}/common.sh" || { echo "Unable to load common.sh"; exit 1; }
 
-# Login to GCP and GKE
+# ===================== Login to GCP
 info "Logging in to Google Cloud..."
 gcloud auth activate-service-account \
     $SERVICE_ACCOUNT \
     --key-file=$GOOGLE_APPLICATION_CREDENTIALS --project=$GCP_PROJECT
 
+# ===================== Login to GKE
 info "Logging in to GKE..."
-gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_CLUSTER_ZONE --project $GCP_PROJECT
-
-okboat
+gcloud config set container/use_client_certificate False
+gcloud container clusters get-credentials "$GKE_CLUSTER" --zone "$GKE_CLUSTER_ZONE" --project "$GCP_PROJECT"

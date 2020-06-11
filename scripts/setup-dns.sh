@@ -140,5 +140,3 @@ else # if destructive operation
         warn "Skipping GCP Global IP..."
     fi
 fi
-
-okboat

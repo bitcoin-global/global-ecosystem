@@ -19,7 +19,7 @@ image: concourse/concourse
 ##      of `concourse/concourse`.
 ## Ref: https://hub.docker.com/r/concourse/concourse/tags/
 ##
-imageTag: "5.6.0"
+imageTag: "6.2.0"
 
 ## Specific image digest to use in place of a tag.
 ## Ref: https://kubernetes.io/docs/concepts/configuration/overview/#container-images
@@ -56,18 +56,48 @@ concourse:
     ##
     clusterName:
 
-    ## The maximum number of open connections for a connection pool
+    ## Enable this flag in order to customize the `client_id` and
+    ## `client_secret` used when logging into the Concourse UI.
     ##
-    maxConns:
+    ## Enabling this requires setting `secrets.clientId` and #
+    ## `secrets.clientSecret` (or filling the equivalent fields in the Secret).
+    ##
+    clientConfig:
+      enabled: false
+
+    ## Interval on which runners are kicked off for builds, locks, scans, and
+    ## checks.
+    ##
+    ## Example: 10s
+    ##
+    componentRunnerInterval:
+
+    ## The maximum number of open connections for the API connection pool.
+    ##
+    apiMaxConns:
+
+    ## The maximum number of open connections for the backend connection pool.
+    ##
+    backendMaxConns:
 
     ## Enable equivalent resources across pipelines and teams to share a single version history.
     ## Ref: https://concourse-ci.org/global-resources.html
     ##
     enableGlobalResources: true
 
-    ## The Future™ of resource checking.
+    ## Enable pipeline archiving functionality in the API
     ##
-    enableLidar:
+    enableArchivePipeline: false
+    #
+
+    ## Enable automatic rerunning of builds when worker disappears
+    ##
+    enableBuildRerunWhenWorkerDisappears: false
+    #
+
+    ## Maximum number of jobs to be scheduling at the same time.
+    ##
+    jobSchedulingMaxInFlight:
 
     ## Interval on which the resource scanner will run to see if new checks need
     ## to be scheduled.
@@ -77,6 +107,13 @@ concourse:
     ## Interval on which the resource checker runs any scheduled checks.
     ##
     lidarCheckerInterval:
+
+    ## Limit the number of concurrent requests to an API endpoint.
+    ##
+    ## Example:
+    ##   ListAllJobs: 5
+    ##
+    concurrentRequestLimits:
 
     ## Enable auditing for all api requests connected to builds.
     ##
@@ -166,7 +203,7 @@ concourse:
 
       ## Enable serving HTTPS traffic directly through the web component.
       ##
-      enabled: true
+      enabled: false
 
       ## Port on which to listen for HTTPS traffic.
       ##
@@ -178,14 +215,14 @@ concourse:
     ##
     ## Example: http://ci.concourse-ci.org
     ##
-    externalUrl: ci.bitcoin-global.io
+    externalUrl:
 
     encryption:
       ## Enable encryption of pipeline configuration. Encryption keys can be set via secrets
       ## (`encryption-key` and `old-encryption-key` fields).
       ## Ref: https://concourse-ci.org/encryption.html
       ##
-      enabled: true
+      enabled: false
 
     localAuth:
       ## Enable the use of local authentication (basic auth).
@@ -216,13 +253,24 @@ concourse:
     ##
     globalResourceCheckTimeout: 1h
 
+    ## Maximum number of checks that can run in one second. If not specified,
+    ## this will be calculated as (# of resources)/(resource checking interval).
+    ## -1 value will remove this maximum limit of checks per second.
+    ##
+    maxChecksPerSecond: 0
+
     ## Interval on which to check for new versions of resources.
     ##
     resourceCheckingInterval: 1m
 
-    ## Interval on which to check for new versions of resource types.
+    ## Interval on which to check for new versions of any resources that have
+    ## configured a webhook token
     ##
-    resourceTypeCheckingInterval: 1m
+    resourceWithWebhookCheckingInterval: 1m
+
+    ## Compression to use when streaming artifacts (values: zstd, gzip)
+    ##
+    streamingArtifactsCompression:
 
     ## Method by which a worker is selected during container placement.
     ## Possible values: volume-locality | random | fewest-build-containers| limit-active-tasks
@@ -238,6 +286,10 @@ concourse:
     ## ref: https://concourse-ci.org/container-placement.html#limit-active-tasks-strategy
     ##
     limitActiveTasks:
+
+    ## How long to wait for requests to Garden to complete. 0 means no timeout.
+    ##
+    gardenRequestTimeout:
 
     ## How long to wait for Baggageclaim to send the response header.
     ##
@@ -344,7 +396,7 @@ concourse:
       ## When true, namespaces are not deleted when the release is deleted.
       ## Irrelevant if the namespaces are not created by this chart.
       ##
-      keepNamespaces: true
+      keepNamespaces: false
 
       ## Path to Kubernetes config when running ATC outside Kubernetes.
       ##
@@ -415,6 +467,10 @@ concourse:
       ##
       url:
 
+      ## Vault namespace to use for authentication and secret lookup.
+      ##
+      namespace:
+
       ## Vault path under which to namespace credentials lookup.
       ##
       pathPrefix: /concourse
@@ -422,6 +478,11 @@ concourse:
       ## Path under which to lookup shared credentials.
       ##
       sharedPath:
+
+      ## Path templates to use for credential lookup.
+      ##
+      ## Example: ["/{{.Team}}/{{.Pipeline}}/{{.Secret}}", "/{{.Team}}/{{.Secret}}"]
+      lookupTemplates: []
 
       ## if the Vault server is using a self-signed certificate, set this to true,
       ## and provide a value for the cert in secrets (field `vault-ca-cert`).
@@ -492,10 +553,18 @@ concourse:
       ##
       authenticationMode: "secrets"
 
-
-    ## Don't actually do any automatic scheduling or checking.
+    ## TODO link to docs: Configuration for using Conjur as a credential manager.
     ##
-    noop: false
+    conjur:
+      enabled: false
+
+      # URL of the Conjur instance.
+      applianceUrl:
+
+      # Optional overrides for pattern of storing different types of secrets.
+      pipelineSecretTemplate:
+      teamSecretTemplate:
+      secretTemplate:
 
     staticWorker:
       ## Enables the direct registration of a worker that has its properties
@@ -514,6 +583,31 @@ concourse:
       ## A resource type to advertise for the worker. Can be specified multiple times.
       ##
       resource:
+
+    tracing:
+      ## Jaeger's HTTP-based Thrift collector endpoint.
+      #
+      ## Example: "http://jaeger:14268/api/traces"
+      ##
+      jaegerEndpoint:
+
+      ## Tags to include to components
+      ##
+      ## Example: "foo:bar,caz:zaz"
+      ##
+      jaegerTags:
+
+      ## Name of the service being traced
+      ##
+      ## Example: "web"
+      ##
+      jaegerService:
+
+      ## GCP's Project ID
+      ##
+      ## Example: "my-projectid"
+      ##
+      stackdriverProjectId:
 
     metrics:
       ## Host string to attach to emitted metrics.
@@ -587,6 +681,13 @@ concourse:
     newrelic:
       enabled: false
 
+      ## New Relic Insights Insert API base Url
+      ## For configuring EU data centers refer to:
+      ## https://docs.newrelic.com/docs/using-new-relic/welcome-new-relic/getting-started/introduction-eu-region-data-center#endpoints
+      ## For default values refer to: https://github.com/concourse/concourse/blob/bc2ff0c9a606814a0a5d6338f44d5cd942b74456/atc/metric/emitter/newrelic.go#L43
+      ##
+      url:
+
       ## New Relic Account ID
       ##
       accountId:
@@ -599,6 +700,19 @@ concourse:
       ##
       servicePrefix:
 
+      ## Number of events to batch together before emitting
+      ##
+      batchSize:
+
+      ## Length of time to wait between emitting until all currently batched events are emitted
+      ## Example: 60s
+      ##
+      batchDuration:
+
+      ## Disables compression of the batch before sending it
+      ##
+      disableCompression:
+
     prometheus:
       enabled: false
 
@@ -610,24 +724,12 @@ concourse:
       ##
       bindPort: 9391
 
-    riemann:
-      enabled: false
-
-      ## Riemann server address to emit metrics to.
-      ##
-      host:
-
-      ## Port of the Riemann server to emit metrics to.
-      ##
-      port: 5555
-
-      ## An optional prefix for emitted Riemann services
-      ##
-      servicePrefix:
-
-      ## Tag to attach to emitted metrics. Can be specified multiple times.
-      ##
-      tag:
+      ## If Prometheus operator is used, also create a servicemonitor object
+      serviceMonitor:
+        enabled: false
+        interval: "30s"
+        # Namespace the servicemonitor object should be in
+        namespace:
 
     ## The value to set for X-Frame-Options. If omitted, the header is not set.
     ##
@@ -646,6 +748,14 @@ concourse:
       ## went missing from the worker.
       ##
       missingGracePeriod: 5m
+
+      ## Period after which hijacked containers will be garbage collected
+      ##
+      hijackGracePeriod:
+
+      ## Period after which failed containers will be garbage collected
+      ##
+      failedGracePeriod:
 
       ## Period after which to reap checks that are completed.
       ##
@@ -678,6 +788,17 @@ concourse:
       ##
       useCaCert: false
 
+    ## Customize RBAC role-action mapping. Pass in as a multi-line YAML string
+    ## Ref: https://concourse-ci.org/user-roles.html#configuring-rbac
+    ## Example:
+    ## configRBAC: |
+    ##   owner:
+    ##   - SetTeam
+    ##   member:
+    ##   - CreateBuild
+    ##
+    configRBAC: ""
+
     auth:
       ## Force sending secure flag on http cookies
       ##
@@ -688,10 +809,20 @@ concourse:
       duration: 24h
 
       mainTeam:
-        ## Configuration file for specifying team params.
+
+        ## Configuration file for specifying the main teams params.
         ## Ref: https://concourse-ci.org/managing-teams.html#setting-roles
+        ## Example:
+        ## config: |
+        ##   roles:
+        ##   - name: owner
+        ##     local:
+        ##       users: ["admin"]
+        ##   - name: member
+        ##     local:
+        ##       users: ["test"]
         ##
-        config:
+        config: ""
 
         ## List of local Concourse users to be included as members of the `main` team.
         ## Make sure you have local users support enabled (`concourse.web.localAuth.enabled`) and
@@ -710,7 +841,23 @@ concourse:
           ##
           org:
 
-          ## List of whitelisted CloudFoundry spaces
+          ## List of whitelisted CloudFoundry spaces for users with any role
+          ##
+          spaceWithAnyRole:
+
+          ## List of whitelisted CloudFoundry spaces for users with the 'developer' role
+          ##
+          spaceWithDeveloperRole:
+
+          ## List of whitelisted CloudFoundry spaces for users with the 'auditor' role
+          ##
+          spaceWithAuditorRole:
+
+          ## List of whitelisted CloudFoundry spaces for users with the 'manager' role
+          ##
+          spaceWithManagerRole:
+
+          ## (Deprecated) List of whitelisted CloudFoundry spaces for users with the 'developer' role
           ##
           space:
 
@@ -788,6 +935,18 @@ concourse:
           user:
 
           ## List of whitelisted OIDC groups
+          ##
+          group:
+
+        ## Authentication (Main Team) (Microsoft Login)
+        ##
+        microsoft:
+
+          ## List of whitelisted Microsoft users
+          ##
+          user:
+
+          ## List of whitelisted Microsoft groups
           ##
           group:
 
@@ -1007,7 +1166,29 @@ concourse:
         ##
         userNameKey: username
 
+      ## Authentication (Microsoft)
+      microsoft:
+        enabled: false
+
+        # Microsoft Tenant limitation (common, consumers, organizations, tenant name or tenant uuid)
+        tenant:
+
+        # Allowed Active Directory Groups
+        groups:
+
+        # Only fetch security groups
+        onlySecurityGroups:
+
     tsa:
+      ## Enable this flag in order to customize the `client_id` and
+      ## `client_secret` used when the TSA needs to communicate with the ATC.
+      ##
+      ## Enabling this requires setting `secrets.tsaClientId` and
+      ## `secrets.tsaClientSecret` (or filling the equivalent fields in the Secret).
+      ##
+      clientConfig:
+        enabled: false
+
       ## Minimum level of logs to see. Possible values: debug, info, error.
       ##
       logLevel: info
@@ -1032,17 +1213,9 @@ concourse:
       ##
       hostKey:
 
-      ## Path to file containing keys to authorize, in SSH authorized_keys format (one public key per line).
-      ##
-      authorizedKeys:
-
       ## ATC API endpoints to which workers will be registered.
       ##
       atcUrl:
-
-      ## Path to private key to use when signing tokens in reqests to the ATC during registration.
-      ##
-      sessionSigningKey:
 
       ## Interval on which to heartbeat workers to the ATC.
       ##
@@ -1119,6 +1292,7 @@ concourse:
     no_proxy:
 
     ## If set, the worker will be immediately removed upon stalling.
+    ## Ignored for kind: Deployment and set to "true"
     ##
     ephemeral:
 
@@ -1166,6 +1340,10 @@ concourse:
     ##
     volumeSweeperMaxInFlight: 5
 
+    ## Network pool to use for garden containers
+    ##
+    containerNetworkPool:
+
     tsa:
 
       ## TSA host(s) to forward the worker through.
@@ -1191,9 +1369,12 @@ concourse:
     externalGardenUrl:
 
     garden:
-      ## Path to the 'gdn' executable (or leave as 'gdn' to find it in $PATH)
+      ## Path to the executable to run the garden backend ('gdn' or
+      ## 'containerd').
       ##
-      bin: gdn
+      ## If not specified, the right binary will be search in $PATH.
+      ##
+      bin:
 
       ## Path to a config file to use for Garden in INI format.
       ##
@@ -1211,9 +1392,21 @@ concourse:
       ##
       dnsProxyEnable:
 
+      ## Custom DNS server to use for garden containers
+      ##
+      dnsServer:
+
       ## Use the insecure Houdini Garden backend.
       ##
       useHoudini:
+
+      ## Use the experimental containerd garden backend.
+      ##
+      useContainerd:
+
+      ## How long to wait for requests to Garden to complete. 0 means no timeout.
+      ##
+      requestTimeout:
 
     baggageclaim:
       ## Minimum level of logs to see. Possible values: debug, info, error
@@ -1265,6 +1458,38 @@ concourse:
       ##
       reapInterval: 10s
 
+    ## Enable Horizontal Pod Autoscaling
+    ## to use this, ephemeral worker with
+    ## worker.kind: Deployment is recommended
+    ##
+    ## see. https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/
+    ## for custom metrics see.
+    ##   https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#support-for-custom-metrics
+    ##
+    ## To disable autoscaling set it to an empty map: { }
+    autoscaling: { }
+      # maxReplicas is required to for auto scaling
+      # see the following example for scaling on CPU_Utilization and on
+      # a custom metric 'concourse_workers_containers'
+      # for this to work you need to configure the metric eg. with prometheus adapter
+#      maxReplicas: 1
+#      minReplicas: 1
+#      builtInMetrics:
+#        - type: Resource
+#          resource:
+#            name: cpu
+#            target:
+#              type: Utilization
+#              averageUtilization: 80
+#      customMetrics:
+#        - type: Pods
+#          pods:
+#            metric:
+#              name: concourse_workers_containers
+#            target:
+#              type: AverageValue
+#              averageValue: 180 
+
 ## Configuration values for Concourse Web components.
 ## For more information regarding the characteristics of
 ## Concourse Web nodes, see https://concourse-ci.org/concourse-web.html.
@@ -1284,6 +1509,14 @@ web:
   ##
   replicas: 1
 
+  ## Startup command for the web component.
+  ## Allows to override the docker image command
+  # command: ["dumb-init", "/usr/local/concourse/bin/concourse"]
+
+  ## Args of the startup command for the web component.
+  ##
+  args: ["web"]
+
   ## Array of extra containers to run alongside the Concourse Web
   ## container.
   ##
@@ -1293,6 +1526,16 @@ web:
   ##   command: ['sh', '-c', 'echo Hello && sleep 3600']
   ##
   sidecarContainers: []
+
+  ## Array of extra initContainers to run alongside the Concourse Web
+  ## container.
+  ##
+  ## Example:
+  ## - name: myapp-init-container
+  ##   image: busybox
+  ##   command: ['sh', '-c', 'echo Hello && sleep 3600']
+  ##
+  extraInitContainers: []
 
   ## Configures the liveness probe used to determine if the Web component is up.
   ## ps.: if you're upgrading Concourse from one version  to another, the probe will
@@ -1441,53 +1684,102 @@ web:
   ## Ref: https://kubernetes.io/docs/user-guide/services/
   ##
   service:
-    ## For minikube, set this to ClusterIP, elsewhere use LoadBalancer or NodePort
-    ## Ref: https://kubernetes.io/docs/user-guide/services/#publishing-services---service-types
-    ##
-    type: LoadBalancer
+    api:
+      ## For minikube, set this to ClusterIP, elsewhere use LoadBalancer or NodePort
+      ## Ref: https://kubernetes.io/docs/user-guide/services/#publishing-services---service-types
+      ##
+      type: ClusterIP
 
-    ## When using `web.service.type: LoadBalancer`, sets the user-specified load balancer IP.
-    ## Example: 172.217.1.174
-    ##
-    loadBalancerIP:
+      ## When using `web.service.api.type: LoadBalancer`, sets the user-specified load balancer IP.
+      ## Example: 172.217.1.174
+      ##
+      loadBalancerIP:
 
-    ## Additional Labels to be added to the web service.
-    ##
-    labels:
+      ## Additional Labels to be added to the web api service.
+      ##
+      labels:
 
-    ## Annotations to be added to the web service.
-    ##
-    ## Example:
-    ##
-    ##   prometheus.io/probe: "true"
-    ##   prometheus.io/probe_path: "/"
-    ##
-    ## When using `web.service.type: LoadBalancer` in AWS, enable HTTPS with an ACM cert:
-    ##
-    ##   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-west-1:123456789:certificate/abc123-abc123-abc123-abc123"
-    ##   service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
-    ##   service.beta.kubernetes.io/aws-load-balancer-backend-port: "atc"
-    ##   service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
-    ##
-    annotations: {}
+      ## Annotations to be added to the web api service.
+      ##
+      ##
+      ## When using `web.service.api.type: LoadBalancer` in AWS, enable HTTPS with an ACM cert:
+      ##
+      ##   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-west-1:123456789:certificate/abc123-abc123-abc123-abc123"
+      ##   service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+      ##   service.beta.kubernetes.io/aws-load-balancer-backend-port: "api"
+      ##   service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+      ##
+      annotations: {}
 
-    ## When using `web.service.type: LoadBalancer`, whitelist the load balancer to particular IPs
-    ## Example:
-    ##   - 192.168.1.10/32
-    ##
-    loadBalancerSourceRanges:
+      ## When using `web.service.api.type: LoadBalancer`, whitelist the load balancer to particular IPs
+      ## Example:
+      ##   - 192.168.1.10/32
+      ##
+      loadBalancerSourceRanges:
 
-    ## When using `web.service.type: NodePort`, sets the nodePort for atc
-    ##
-    atcNodePort:
+      ## When using `web.service.api.type: NodePort`, sets the nodePort for api
+      ##
+      NodePort:
 
-    ## When using `web.service.type: NodePort`, sets the nodePort for atc tls
-    ##
-    atcTlsNodePort:
+      ## When using `web.service.api.type: NodePort`, sets the nodePort for api tls
+      ##
+      tlsNodePort:
 
-    ## When using `web.service.type: NodePort`, sets the nodePort for tsa
-    ##
-    tsaNodePort:
+    workerGateway:
+      ## For minikube, set this to ClusterIP, elsewhere use LoadBalancer or NodePort
+      ## Ref: https://kubernetes.io/docs/user-guide/services/#publishing-services---service-types
+      ##
+      type: ClusterIP
+
+      ## When using `web.service.workerGateway.type: LoadBalancer`, sets the user-specified load balancer IP.
+      ## Example: 172.217.1.174
+      ##
+      loadBalancerIP:
+
+      ## Additional Labels to be added to the web workerGateway service.
+      ##
+      labels:
+
+      ## Annotations to be added to the web workerGateway service.
+      ##
+      ## When using `web.service.workerGateway.type: LoadBalancer` in AWS, enable HTTPS with an ACM cert:
+      ##
+      ##   service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "arn:aws:acm:eu-west-1:123456789:certificate/abc123-abc123-abc123-abc123"
+      ##   service.beta.kubernetes.io/aws-load-balancer-backend-protocol: "http"
+      ##   service.beta.kubernetes.io/aws-load-balancer-backend-port: "atc"
+      ##   service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443"
+      ##
+      annotations: {}
+
+      ## When using `web.service.workerGateway.type: LoadBalancer`, whitelist the load balancer to particular IPs
+      ## Example:
+      ##   - 192.168.1.10/32
+      ##
+      loadBalancerSourceRanges:
+
+      ## When using `web.service.workerGateway.type: NodePort`, sets the nodePort for tsa
+      ##
+      NodePort:
+
+
+
+    prometheus:
+      ## Additional Labels to be added to the web service.
+      ##
+      labels:
+
+      ## Annotations to be added to the web service.
+      ##
+      ## Example:
+      ##
+      ##   prometheus.io/probe: "true"
+      ##   prometheus.io/probe_path: "/"
+      ##
+      ##
+      annotations: {}
+
+
+
 
   ## Ingress configuration.
   ## Ref: https://kubernetes.io/docs/user-guide/ingress/
@@ -1495,14 +1787,16 @@ web:
   ingress:
     ## Enable Ingress.
     ##
-    enabled: false
+    enabled: true
 
     ## Annotations to be added to the web ingress.
     ## Example:
     ##   kubernetes.io/ingress.class: nginx
     ##   kubernetes.io/tls-acme: 'true'
     ##
-    annotations: {}
+    annotations:
+      kubernetes.io/ingress.global-static-ip-name: dev-bitcoin-global-external-ip
+      networking.gke.io/managed-certificates: concourse-certs
 
     ## Hostnames.
     ## Must be provided if Ingress is enabled.
@@ -1510,6 +1804,7 @@ web:
     ##   - concourse.domain.com
     ##
     hosts:
+      - ci.bitcoin-global.dev
 
     ## TLS configuration.
     ## Secrets must be manually created in the namespace.
@@ -1530,6 +1825,12 @@ worker:
   ## This can allow users to create web only releases by setting this to false
   ##
   enabled: true
+
+  ## Selects kind of Deployment. Valid Options are: StatefulSet | Deployment
+  ## Using Deployment leads to ephemeral workers. Meaning workers do not
+  ## share state between restarts
+  ##
+  kind: StatefulSet
 
   ## Override the components name (defaults to worker).
   ##
@@ -1553,6 +1854,16 @@ worker:
   ##   command: ['sh', '-c', 'echo Hello && sleep 3600']
   ##
   sidecarContainers: []
+
+  ## Array of extra initContainers to run alongside the Concourse worker
+  ## container.
+  ##
+  ## Example:
+  ## - name: myapp-init-container
+  ##   image: busybox
+  ##   command: ['sh', '-c', 'echo Hello && sleep 3600']
+  ##
+  extraInitContainers: []
 
   ## Minimum number of workers available after an eviction
   ## Ref: https://kubernetes.io/docs/admin/disruptions/
@@ -1674,6 +1985,15 @@ worker:
   ##
   hardAntiAffinity: false
 
+  ## Set of labels to use in the hard anti affinity rule.
+  ##
+  ## Example:
+  ##   hardAntiAffinity: true
+  ##   hardAntiAffinityLabels:
+  ##     application: concourse
+  ##
+  hardAntiAffinityLabels: {}
+
   ## Tolerations for the worker nodes.
   ## Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
   ##
@@ -1695,7 +2015,14 @@ worker:
   ## Strategy for StatefulSet updates (requires Kubernetes 1.6+)
   ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset
   ##
-  updateStrategy: RollingUpdate
+  ## Strategy for Deployment updates
+  ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+  ##
+  updateStrategy:
+    type: RollingUpdate
+#    rollingUpdate:
+#      maxSurge: 25%
+#      maxUnavailable: 1
 
   ## Pod Management strategy (requires Kubernetes 1.7+)
   ## Ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#pod-management-policies
@@ -1703,6 +2030,7 @@ worker:
   ## "OrderedReady" is default. "Parallel" means worker pods will launch or terminate
   ## in parallel.
   ##
+  ## Ignored for Kind Deployment
   podManagementPolicy: Parallel
 
   ## When persistance is disabled this value will be used to limit the emptyDir volume size
@@ -1717,6 +2045,7 @@ worker:
 ##
 persistence:
   ## Enable persistence using Persistent Volume Claims.
+  ## Ignored for Kind: Deployment. If persistence is needed use kind: StatefulSet
   ##
   enabled: true
 
@@ -1816,13 +2145,45 @@ rbac:
   ##
   workerServiceAccountName: default
 
+## For managing podSecurityPolicies. To make sure rbac objects are also created
+## for the use of the podsecuritypolicy objects, 
+## set rbac.create to 'true' (this is the default value)
+##
+podSecurityPolicy:
+  ## Create podSecurityPolicy objects for concourse. Set this to false if 
+  ## objects are not needed, or if they are managed outside helm.
+  ##
+  create: false
+
+  ## By default use the recommended minimum set of volumes in kubernetes.
+  ## Possible to overwrite if other types are used.
+  ##
+  allowedWorkerVolumes:
+  - 'secret'
+  - 'persistentVolumeClaim'
+  - 'configMap'
+  - 'downwardAPI'
+  - 'emptyDir'
+  - 'projected'
+  
+  ## By default use the recommended minimum set of volumes in kubernetes. 
+  ## Possible to overwrite if other types are used.
+  ##
+  allowedWebVolumes:
+  - 'secret'
+  - 'persistentVolumeClaim'
+  - 'configMap'
+  - 'downwardAPI'
+  - 'emptyDir'
+  - 'projected'
+
 ## For managing secrets using Helm
 ##
 secrets:
   ## Create the secret resource from the following values. Set this to
   ## false to manage these secrets outside Helm.
   ##
-  create: true
+  create: false
 
   ## Array of team names and public keys for team external workers.
   ##
@@ -1883,7 +2244,7 @@ secrets:
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDYBQ9fG6IML+qsFaMh1Pl+81wyUwRilHdfhItAiAsLVQsOwI5+V4pn5aLhHPBuRQqIqYmbkZ7I1VUIN1+90PVJ3X7l9qqanb85AHMtLujw1j9u0zDyH2XHgpUloknUQzUSLIZjjU3Hn3Uo/XikF+vT8104isO7Ym8Xp7sIcRuvOQ3nuRsFVCRogxpLTVHD/k57rwYVqWWLaKLwvx01ZVXOq4GHk/BVaKa9ODC/dNgbZMfwvVVXuf7/NFGmSMyXb49Si4aoP4Gn7jAX6GngBbm/bgKqO0skQy/ggQm/YVF+s5q4EhleMBLVJKD1VpM5LeLDFpiu/y4bVd8wUcgK+QQ9 Concourse
 
   ## Concourse Session Signing Keys.
-  ## Ref: https://concourse-ci.org/install.html#generating-keys
+  ## Ref: https://concourse-ci.org/concourse-generate-key.html
   ##
   sessionSigningKey: |-
     -----BEGIN RSA PRIVATE KEY-----
@@ -1915,7 +2276,7 @@ secrets:
     -----END RSA PRIVATE KEY-----
 
   ## Concourse Worker Keys.
-  ## Ref: https://concourse-ci.org/install.html#generating-keys
+  ## Ref: https://concourse-ci.org/concourse-generate-key.html
   ##
   workerKey: |-
     -----BEGIN RSA PRIVATE KEY-----
@@ -1948,6 +2309,17 @@ secrets:
 
   workerKeyPub: |-
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC496FSYFcBAKgDtMsBAJiF/6/NxlXKP5UZecyEsedYuTt1GOgJTwaA1qZ1LmHsbfLDE68oDdiM4uvxfI4wtLhz57w3u0jOUxZ2JeF7SVwEf1nVqLn4Gh/f8GUNQGSyIp1zUD5Bx9fq0PAyQ47mt7Ufi84rcf8LKl7nzAIHTcdg2BvTkQN9bUGPaq/Pb1W2bKPAQy4OzXTSIyrAJ89TH2jFeaZfyxQFGbD9jVHH/yl0oiMrDeaRYgccE5II+KY7WoLjsBry/9Qf2ERELKTK4UeIGIqWci9lab1ti+GxFPPiC3krNFjo4jShV4eUs4cNIrjwNrxVaKPXmU6o7Y3Hpayx Concourse
+
+
+  ## Secrets for web interface login
+  ##
+  clientId:
+  clientSecret:
+
+  ## Secrets for tsa login
+  ##
+  tsaClientId:
+  tsaClientSecret:
 
   ## Secrets for DB access
   ##
@@ -2034,6 +2406,10 @@ secrets:
   oidcClientSecret:
   oidcCaCert:
 
+  ## Secrets for Microsoft Auth.
+  microsoftClientId:
+  microsoftClientSecret:
+
   ## Secrets for using Hashcorp Vault as a credential manager.
   ##
   ## if the Vault server is using a self-signed certificate, provide the CA public key.
@@ -2074,3 +2450,20 @@ secrets:
   ## SSL certificate used to verify the Syslog server for draining build logs.
   ##
   syslogCaCert:
+
+  ## Secrets for Conjur credentials manager.
+  #
+  # Org account.
+  conjurAccount:
+
+  # Host username. E.g host/concourse
+  conjurAuthnLogin:
+
+  # Api key related to the host.
+  conjurAuthnApiKey:
+
+  # Token file used if conjur instance is running in k8s or iam. E.g. /path/to/token_file
+  conjurAuthnTokenFile:
+
+  # Cert file used if conjur instance is using a self signed cert. E.g. /path/to/conjur.pem
+  conjurCertFile:
