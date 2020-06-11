@@ -15,10 +15,6 @@ set -eo pipefail
 SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 . "${SCRIPT_ROOT}/common.sh" || { echo "Unable to load common.sh"; exit 1; }
 
-# Install dependencies
-info "Installing dependencies..."
-sudo apt install -y xclip xsel
-
 ###############################################################################
 # ===================== REQUIREMENTS
 kill_if_empty "GITHUB_APP_ID" $GITHUB_APP_ID
@@ -59,14 +55,14 @@ mv session-signing-key web/session-signing-key
 mv host-key web/host-key
 mv local-users web/local-users
 mv web-encryption-key web/encryption-key
+mv github-client-id web/github-client-id
+mv github-client-secret web/github-client-secret
 cp worker/worker-key-pub web/worker-key-pub
 
 # additional concourse secrets
 mv encryption-key concourse/encryption-key
 mv postgresql-password concourse/postgresql-password
 mv postgresql-user concourse/postgresql-user
-mv github-client-id concourse/github-client-id
-mv github-client-secret concourse/github-client-secret
 cd ..
 
 ###############################################################################

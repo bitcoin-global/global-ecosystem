@@ -983,7 +983,7 @@ concourse:
       ## Authentication (GitHub)
       ##
       github:
-        enabled: false
+        enabled: true
 
         ## Hostname of GitHub Enterprise deployment (No scheme, No trailing slash)
         ##
