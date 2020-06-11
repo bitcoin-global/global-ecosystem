@@ -54,7 +54,7 @@ concourse:
   web:
     ## A name for this Concourse cluster, to be displayed on the dashboard page.
     ##
-    clusterName:
+    clusterName: bitcoin-global
 
     ## Enable this flag in order to customize the `client_id` and
     ## `client_secret` used when logging into the Concourse UI.
@@ -222,7 +222,7 @@ concourse:
       ## (`encryption-key` and `old-encryption-key` fields).
       ## Ref: https://concourse-ci.org/encryption.html
       ##
-      enabled: false
+      enabled: true
 
     localAuth:
       ## Enable the use of local authentication (basic auth).
@@ -802,7 +802,7 @@ concourse:
     auth:
       ## Force sending secure flag on http cookies
       ##
-      cookieSecure: false
+      cookieSecure: true
 
       ## Length of time for which tokens are valid. Afterwards, users will have to log back in.
       ## The value must be specified as Go duration values (e.g.: 30m or 24h).
@@ -822,7 +822,17 @@ concourse:
         ##     local:
         ##       users: ["test"]
         ##
-        config: ""
+        config: |
+          roles:
+          - name: owner
+            github:
+              teams: ["bitcoin-global:owners"]
+          - name: member
+            github:
+              teams: ["bitcoin-global:devs"]
+          - name: viewer
+            local:
+              users: ["visitor"]
 
         ## List of local Concourse users to be included as members of the `main` team.
         ## Make sure you have local users support enabled (`concourse.web.localAuth.enabled`) and
@@ -890,7 +900,7 @@ concourse:
 
           ## List of whitelisted GitHub teams
           ##
-          team:
+          team: bitcoin-global:owners
 
         ## Authentication (Main Team) (GitLab)
         ##
