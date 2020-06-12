@@ -812,6 +812,8 @@ concourse:
         config: |
           roles:
           - name: owner
+            local:
+              users: ["admin"]
             github:
               teams: ["bitcoin-global:owners"]
           - name: member
@@ -825,7 +827,7 @@ concourse:
         ## Make sure you have local users support enabled (`concourse.web.localAuth.enabled`) and
         ## that the users were added (`local-users` secret).
         ##
-        localUser: "test"
+        localUser: "admin"
 
         ## Authentication (Main Team) (CloudFoundry)
         ##
@@ -879,7 +881,7 @@ concourse:
         github:
           ## List of whitelisted GitHub orgs
           ##
-          org: bitcoin-global
+          team: bitcoin-global:owners
 
         ## Authentication (Main Team) (GitLab)
         ##

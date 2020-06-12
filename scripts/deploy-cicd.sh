@@ -15,16 +15,18 @@ set -eo pipefail
 SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 . "${SCRIPT_ROOT}/common.sh" || { echo "Unable to load common.sh"; exit 1; }
 
-###############################################################################
-# ===================== REQUIREMENTS
-# kill_if_empty "GITHUB_APP_ID" $GITHUB_APP_ID
-# kill_if_empty "GITHUB_APP_SECRET" $GITHUB_APP_SECRET
+# Config
+ARTIFACT_NAME=${CONCOURSE_NAME:-concourse}
+ARTIFACT_VERSION=${CONCOURSE_VERSION:-11.1.0}
 
 ###############################################################################
 # ===================== Creating secrets
 ###############################################################################
 info "Creating secrets..."
-SECRET_FOLDER="concourse-secrets"
+
+SECRET_FOLDER="$ARTIFACT_NAME-secrets"
+OVERRIDES_FILE=$(mktemp /tmp/overrides.XXXXXX)
+
 mkdir $SECRET_FOLDER || true
 cd $SECRET_FOLDER
 
@@ -33,16 +35,19 @@ ssh-keygen -t rsa -f worker-key  -N '' -m PEM
 ssh-keygen -t rsa -f session-signing-key  -N '' -m PEM
 rm session-signing-key.pub
 
-echo "admin" > postgresql-user
-echo "$(openssl rand -base64 24)" > postgresql-password
-
-# echo $GITHUB_APP_ID > github-client-id
-# echo $GITHUB_APP_SECRET > github-client-secret
-
 printf "%s" "$(openssl rand -base64 24)" > encryption-key
 printf "%s" "$(openssl rand -base64 24)" > web-encryption-key
 printf "%s:%s" "admin" "$(openssl rand -base64 24)" > local-users
 
+echo "admin" > postgresql-user
+echo "$(openssl rand -base64 24)" > postgresql-password
+cat <<EOF > $OVERRIDES_FILE
+postgresql:
+  postgresqlUsername: $(cat postgresql-user)
+  postgresqlPassword: $(cat postgresql-password)
+EOF
+
+# move secrets
 mkdir concourse web worker || true
 
 # worker secrets
@@ -55,14 +60,13 @@ mv session-signing-key web/session-signing-key
 mv host-key web/host-key
 mv local-users web/local-users
 mv web-encryption-key web/encryption-key
-# mv github-client-id web/github-client-id
-# mv github-client-secret web/github-client-secret
 cp worker/worker-key-pub web/worker-key-pub
 
-# additional concourse secrets
+# concourse secrets
 mv encryption-key concourse/encryption-key
 mv postgresql-password concourse/postgresql-password
 mv postgresql-user concourse/postgresql-user
+
 cd ..
 
 ###############################################################################
@@ -78,20 +82,25 @@ info "Configuring Google dependencies and Kubernetes secrets..."
 ./dns-record.sh --name="dev-bitcoin-global" --domain="ci.bitcoin-global.dev" --type="CNAME"
 
 # ===================== Adding K8s secrets
-info "Adding secrets to K8s..."
-kubectl create secret generic concourse-worker --from-file=$SECRET_FOLDER/worker/ \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic concourse-web --from-file=$SECRET_FOLDER/web/ \
-    --dry-run=client -o yaml | kubectl apply -f -
-kubectl create secret generic concourse-concourse --from-file=$SECRET_FOLDER/concourse/ \
-    --dry-run=client -o yaml | kubectl apply -f -
+INSTALLED_CHARTS=$(helm list -oyaml)
+if grep -q "$ARTIFACT_NAME" <<<"$INSTALLED_CHARTS"; then
+  warn "Secrets shouldn't be updated for existing charts, skipping..."
+else
+  info "Adding secrets to K8s..."
+  kubectl create secret generic $ARTIFACT_NAME-worker --from-file=$SECRET_FOLDER/worker/ \
+      --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic $ARTIFACT_NAME-web --from-file=$SECRET_FOLDER/web/ \
+      --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic $ARTIFACT_NAME-concourse --from-file=$SECRET_FOLDER/concourse/ \
+      --dry-run=client -o yaml | kubectl apply -f -
+fi
 rm -rf $SECRET_FOLDER
 
 cat <<EOF | kubectl apply -f -
 apiVersion: networking.gke.io/v1beta2
 kind: ManagedCertificate
 metadata:
-  name: concourse-certs
+  name: $ARTIFACT_NAME-certs
 spec:
   domains:
     - bitcoin-global.dev
@@ -99,7 +108,7 @@ spec:
 EOF
 
 # ===================== Installing Helm chart
-info "Installing Concourse helm chart..."
+info "Installing $ARTIFACT_NAME helm chart..."
 helm repo add concourse https://concourse-charts.storage.googleapis.com/
-helm upgrade --version 11.1.0 -f ../charts/concourse/values.yaml concourse concourse/concourse \
+helm upgrade --version 11.1.0 -f ../charts/concourse/values.yaml -f $OVERRIDES_FILE $ARTIFACT_NAME concourse/concourse \
     --install --wait --timeout 40m0s --atomic
