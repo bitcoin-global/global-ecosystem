@@ -1,0 +1,9 @@
+---
+resources:
+- name: bitcoin-tools
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.bitcoin-tools-repository ))
+    username: ((git.username))
+    password: ((git.password))

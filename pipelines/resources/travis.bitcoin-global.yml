@@ -1,0 +1,19 @@
+---
+resource_types:
+- name: travis
+  type: docker-image
+  source:
+    repository: orangeopensource/travis-resource-image
+    tag: latest
+
+resources:
+- name: travis-bitcoin-global
+  type: travis
+  source:
+    repository: (( grab meta.bitcoin-global-project ))
+    github-token: ((git.token))
+    check-all-builds: true
+    travis-url: https://api.travis-ci.com/
+    #or travis-token: mytravistoken
+    #branch: master
+    #check-all-builds: false

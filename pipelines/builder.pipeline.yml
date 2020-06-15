@@ -1,0 +1,26 @@
+spruce:
+# Build pipeline file
+- base: base.yml
+  merge:
+  - with_all_in: consts/
+    regexp: ".*.(yml)"
+  - with:
+      files:
+      - resources/docker.builder.yml
+      - resources/git.bitcoin-tools.yml
+  - with_all_in: jobs/builder/
+    regexp: ".*.(yml)"
+  to: ignore.builder.pipeline.yml
+
+# Clean pipeline file
+- base:  ignore.builder.pipeline.yml
+  prune:
+  - meta
+  - meta_plan
+  to: ignore.builder.pipeline.yml
+
+# Deploy pipeline file
+fly:
+  target: bitglob
+  name: bitcoin-builder
+  config: ignore.builder.pipeline.yml

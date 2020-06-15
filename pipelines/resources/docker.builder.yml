@@ -1,0 +1,9 @@
+---
+resources:
+- name: bitcoin-builder
+  type: docker-image
+  icon: docker
+  source:
+    username: _json_key
+    password: ((gcp.service-account))
+    repository: (( grab meta.builder-repository ))

@@ -1,0 +1,5 @@
+---
+groups:
+- name: release
+  jobs:
+  - build-releases

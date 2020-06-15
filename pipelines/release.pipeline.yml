@@ -1,0 +1,27 @@
+spruce:
+# Build pipeline file
+- base: base.yml
+  merge:
+  - with_all_in: consts/
+    regexp: ".*.(yml)"
+  - with:
+      files:
+      - groups/release.yml
+      - resources/git.bitcoin-global.yml
+      - resources/docker.builder.yml
+  - with_all_in: jobs/release/
+    regexp: ".*.(yml)"
+  to: ignore.release.pipeline.yml
+
+# Clean pipeline file
+- base:  ignore.release.pipeline.yml
+  prune:
+  - meta
+  - meta_plan
+  to: ignore.release.pipeline.yml
+
+# Deploy pipeline file
+fly:
+  target: bitglob
+  name: release-github
+  config: ignore.release.pipeline.yml

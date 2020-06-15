@@ -1,0 +1,6 @@
+---
+meta:
+  bitcoin-global-project: bitcoin-global/bitcoin-global
+  builder-repository: eu.gcr.io/bitcoin-global-playground/builder
+  bitcoin-global-repository: https://github.com/bitcoin-global/bitcoin-global.git
+  bitcoin-tools-repository: https://github.com/bitcoin-global/bitcoin-tools.git

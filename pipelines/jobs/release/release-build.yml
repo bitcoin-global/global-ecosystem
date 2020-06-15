@@ -1,0 +1,133 @@
+---
+### Shared task config
+release-task-config: &release-task-config
+  image: bitcoin-builder
+  privileged: true
+  params: 
+    GITHUB_TOKEN: ((git.token))
+    PRIVATE_KEY: ((ssh.private))
+    PUBLIC_KEY: ((ssh.public))
+    GPG_KEY: ((gpg.private))
+    GPG_PASSPHRASE: ((gpg.passphrase))
+
+### Resource overrides
+meta:
+  overrides:
+    bitcoin-global:
+      git:
+        branch: bootstrap
+
+### Plan overrides
+meta_plan:
+  prepare:
+    - |
+      cd bitcoin-global/
+      TEMP_TAG=$(grep -e "$(cat .git/HEAD)" .git/packed-refs | head -n1 | cut -d ' ' -f 2)
+      export GITHUB_TAG=${TEMP_TAG##*/}
+      cd ..
+      echo $GITHUB_TAG > ./bitcoin-global-tag/tag
+
+    - |
+      # cp -R ./bitcoin-global/ ./builder/bitcoin-global/
+      cp ./bitcoin-global/contrib/gitian-build.py ./builder/gitian-build.py
+      chmod u+x ./builder/gitian-build.py
+
+  release-linux:
+    - (( grab meta.configure_git ))
+    - (( grab meta.run_base_setup ))
+    - ./gitian-build.py --detach-sign -o l --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
+    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+
+  release-windows:
+    - (( grab meta.configure_git ))
+    - (( grab meta.run_base_setup ))
+    - ./gitian-build.py --detach-sign -o w --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
+    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+
+  release-mac:
+    - (( grab meta.configure_git ))
+    - (( grab meta.run_base_setup ))
+    - |
+      mkdir -p gitian-builder
+      cd ./gitian-builder
+      mkdir -p inputs && cd inputs
+      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz --output MacOSX10.11.sdk.tar.gz
+    - ./gitian-build.py --detach-sign -o m --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
+    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+
+### Pipeline config
+jobs:
+- name: build-releases
+  plan:
+  - get: bitcoin-global
+    trigger: true
+  - get: bitcoin-builder
+
+  - task: Prepare VM builder
+    <<: *release-task-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-builder
+        - name: bitcoin-global
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.prepare ))
+      outputs:
+        - name: builder
+        - name: bitcoin-global-tag
+
+  - in_parallel:
+    - task: Release Linux
+      <<: *release-task-config
+      config:
+        platform: linux
+        inputs:
+          - name: bitcoin-builder
+          - name: builder
+          - name: bitcoin-global-tag
+        run:
+          user: root
+          path: bash
+          args:
+            - -exc
+            - (( join "\n" meta_plan.release-linux ))
+        outputs:
+          - name: bin
+
+    - task: Release Windows
+      <<: *release-task-config
+      config:
+        platform: linux
+        inputs:
+          - name: bitcoin-builder
+          - name: builder
+          - name: bitcoin-global-tag
+        run:
+          user: root
+          path: bash
+          args:
+            - -exc
+            - (( join "\n" meta_plan.release-windows ))
+        outputs:
+          - name: bin
+
+    - task: Release Mac
+      <<: *release-task-config
+      config:
+        platform: linux
+        inputs:
+          - name: bitcoin-builder
+          - name: builder
+          - name: bitcoin-global-tag
+        run:
+          user: root
+          path: bash
+          args:
+            - -exc
+            - (( join "\n" meta_plan.release-mac ))
+        outputs:
+          - name: bin
