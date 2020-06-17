@@ -1,17 +1,20 @@
 ---
-### Shared task config
-release-task-config: &release-task-config
-  image: bitcoin-builder
-  privileged: true
-  params: 
-    GITHUB_TOKEN: ((git.token))
-    PRIVATE_KEY: ((ssh.private))
-    PUBLIC_KEY: ((ssh.public))
-    GPG_KEY: ((gpg.private))
-    GPG_PASSPHRASE: ((gpg.passphrase))
-
 ### Resource overrides
 meta:
+  ### Shared task config
+  release-task-config: &release-task-config
+    image: bitcoin-builder
+    privileged: true
+    params:
+      GITHUB_TOKEN: ((git.token))
+      PRIVATE_KEY: ((ssh.private))
+      PUBLIC_KEY: ((ssh.public))
+      GPG_KEY: ((gpg.private))
+      GPG_PASSPHRASE: ((gpg.passphrase))
+      DOCKER_DRIVER: btrfs
+      DOCKER_OPTS: -s btrfs
+      DOCKERD_TIMEOUT: 60
+
   overrides:
     bitcoin-global:
       git:
@@ -19,76 +22,64 @@ meta:
 
 ### Plan overrides
 meta_plan:
-  prepare:
-    - |
-      cd bitcoin-global/
-      TEMP_TAG=$(grep -e "$(cat .git/HEAD)" .git/packed-refs | head -n1 | cut -d ' ' -f 2)
-      export GITHUB_TAG=${TEMP_TAG##*/}
-      cd ..
-      echo $GITHUB_TAG > ./bitcoin-global-tag/tag
-
-    - |
-      # cp -R ./bitcoin-global/ ./builder/bitcoin-global/
-      cp ./bitcoin-global/contrib/gitian-build.py ./builder/gitian-build.py
-      chmod u+x ./builder/gitian-build.py
-
   release-linux:
-    - (( grab meta.configure_git ))
+    - export RELEASE_TYPE=l
     - (( grab meta.run_base_setup ))
-    - ./gitian-build.py --detach-sign -o l --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
-    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+    - (( grab meta.configure_git ))
+    - (( grab meta.get_version ))
+    - (( grab meta.run_release ))
 
   release-windows:
-    - (( grab meta.configure_git ))
+    - export RELEASE_TYPE=w
     - (( grab meta.run_base_setup ))
-    - ./gitian-build.py --detach-sign -o w --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
-    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+    - (( grab meta.configure_git ))
+    - (( grab meta.get_version ))
+    - (( grab meta.run_release ))
 
   release-mac:
-    - (( grab meta.configure_git ))
+    - export RELEASE_TYPE=m
     - (( grab meta.run_base_setup ))
+    - (( grab meta.configure_git ))
+    - (( grab meta.get_version ))
     - |
-      mkdir -p gitian-builder
-      cd ./gitian-builder
-      mkdir -p inputs && cd inputs
-      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz --output MacOSX10.11.sdk.tar.gz
-    - ./gitian-build.py --detach-sign -o m --commit -j 4 -m 4000 -b fhivemind $GITHUB_TAG
-    - mv bitcoin-binaries/$GITHUB_TAG/ bin
+      mkdir ./gitian-builder/inputs
+      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
+        --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
+    - (( grab meta.run_release ))
+
+  release-pack:
+    - (( grab meta.get_version ))
+    - |
+      git config --global user.email "sevice-account@bitcoin-global.dev"
+      git config --global user.name "sa-builder"
+
+      cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
+      cd bitcoin-tools/
+
+      git add .
+      git commit -m "Adding Bitcoin Global v$GITHUB_TAG binaries"
 
 ### Pipeline config
 jobs:
 - name: build-releases
+  build_logs_to_retain: 3
+  serial: true
   plan:
-  - get: bitcoin-global
-    trigger: true
-  - get: bitcoin-builder
-
-  - task: Prepare VM builder
-    <<: *release-task-config
-    config:
-      platform: linux
-      inputs:
-        - name: bitcoin-builder
-        - name: bitcoin-global
-      run:
-        user: root
-        path: bash
-        args:
-          - -exc
-          - (( join "\n" meta_plan.prepare ))
-      outputs:
-        - name: builder
-        - name: bitcoin-global-tag
+  - in_parallel:
+    - get: bitcoin-global
+      trigger: true
+    - get: bitcoin-builder
+    - get: bitcoin-tools
 
   - in_parallel:
     - task: Release Linux
+      privileged: true
       <<: *release-task-config
       config:
         platform: linux
         inputs:
+          - name: bitcoin-global
           - name: bitcoin-builder
-          - name: builder
-          - name: bitcoin-global-tag
         run:
           user: root
           path: bash
@@ -96,16 +87,16 @@ jobs:
             - -exc
             - (( join "\n" meta_plan.release-linux ))
         outputs:
-          - name: bin
+          - name: bitcoin-tools-l
 
     - task: Release Windows
+      privileged: true
       <<: *release-task-config
       config:
         platform: linux
         inputs:
+          - name: bitcoin-global
           - name: bitcoin-builder
-          - name: builder
-          - name: bitcoin-global-tag
         run:
           user: root
           path: bash
@@ -113,16 +104,16 @@ jobs:
             - -exc
             - (( join "\n" meta_plan.release-windows ))
         outputs:
-          - name: bin
+          - name: bitcoin-tools-w
 
     - task: Release Mac
+      privileged: true
       <<: *release-task-config
       config:
         platform: linux
         inputs:
+          - name: bitcoin-global
           - name: bitcoin-builder
-          - name: builder
-          - name: bitcoin-global-tag
         run:
           user: root
           path: bash
@@ -130,4 +121,39 @@ jobs:
             - -exc
             - (( join "\n" meta_plan.release-mac ))
         outputs:
-          - name: bin
+          - name: bitcoin-tools-m
+
+  - task: Pack binaries
+    privileged: true
+    <<: *release-task-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-builder
+        - name: bitcoin-global
+        - name: bitcoin-tools
+        - name: bitcoin-tools-w
+        - name: bitcoin-tools-l
+        - name: bitcoin-tools-m
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - |
+            git config --global user.email "sevice-account@bitcoin-global.dev"
+            git config --global user.name "sa-builder"
+
+            cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
+            cd bitcoin-tools/
+
+            git add .
+            git commit -m "Adding binaries"
+
+      outputs:
+        - name: bitcoin-tools
+
+  - put: bitcoin-tools
+    params: 
+      repository: bitcoin-tools
+      branch: master

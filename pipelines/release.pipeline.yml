@@ -8,6 +8,7 @@ spruce:
       files:
       - groups/release.yml
       - resources/git.bitcoin-global.yml
+      - resources/git.bitcoin-tools.yml
       - resources/docker.builder.yml
   - with_all_in: jobs/release/
     regexp: ".*.(yml)"

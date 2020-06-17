@@ -19,12 +19,15 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 ARTIFACT_NAME=${CONCOURSE_NAME:-concourse}
 ARTIFACT_VERSION=${CONCOURSE_VERSION:-11.1.0}
 
+CONCOURSE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-5c1c9014a8c93bdf5cc2}
+CONCOURSE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+
 ###############################################################################
 # ===================== Creating secrets
 ###############################################################################
 info "Creating secrets..."
 
-SECRET_FOLDER="$ARTIFACT_NAME-secrets"
+SECRET_FOLDER=${ARTIFACT_NAME:-secrets}
 OVERRIDES_FILE=$(mktemp /tmp/overrides.XXXXXX)
 
 mkdir $SECRET_FOLDER || true
@@ -38,6 +41,9 @@ rm session-signing-key.pub
 printf "%s" "$(openssl rand -base64 24)" > encryption-key
 printf "%s" "$(openssl rand -base64 24)" > web-encryption-key
 printf "%s:%s" "admin" "$(openssl rand -base64 24)" > local-users
+
+echo $CONCOURSE_GITHUB_CLIENT_ID > github-client-id
+echo $CONCOURSE_GITHUB_CLIENT_SECRET > github-client-secret
 
 echo "admin" > postgresql-user
 echo "$(openssl rand -base64 24)" > postgresql-password
@@ -60,6 +66,8 @@ mv session-signing-key web/session-signing-key
 mv host-key web/host-key
 mv local-users web/local-users
 mv web-encryption-key web/encryption-key
+mv github-client-id web/github-client-id
+mv github-client-secret web/github-client-secret
 cp worker/worker-key-pub web/worker-key-pub
 
 # concourse secrets
@@ -75,7 +83,7 @@ cd ..
 info "Configuring Google dependencies and Kubernetes secrets..."
 
 # ===================== Ensure logged in to GCP
-./login.sh
+# ./login.sh
 
 # ===================== Configuring GCP DNS configs
 ./setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
@@ -111,4 +119,4 @@ EOF
 info "Installing $ARTIFACT_NAME helm chart..."
 helm repo add concourse https://concourse-charts.storage.googleapis.com/
 helm upgrade --version 11.1.0 -f ../charts/concourse/values.yaml -f $OVERRIDES_FILE $ARTIFACT_NAME concourse/concourse \
-    --install --wait --timeout 40m0s --atomic
+    --install --wait --timeout 10m0s --atomic

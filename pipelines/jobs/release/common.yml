@@ -1,9 +1,21 @@
 ---
 meta:
   run_base_setup: &run_base_setup |
-    export GITHUB_TAG=$(cat bitcoin-global-tag/tag)
-    cd builder/
-    ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
+    cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
+    chmod u+x ./gitian-build.py
+    entrypoint.sh
+
+  get_version: &get_version |
+    TEMP_TAG=$(grep -e "$(cat ./bitcoin-global/.git/HEAD)" ./bitcoin-global/.git/packed-refs | head -n1 | cut -d ' ' -f 2)
+    export GITHUB_TAG=${TEMP_TAG##*/}
+
+  run_release: &run_release |
+    ./gitian-build.py --docker --commit --setup fhivemind $GITHUB_TAG
+    ./gitian-build.py --docker --detach-sign -o $RELEASE_TYPE --commit -j 2 -m 4000 -b fhivemind $GITHUB_TAG
+
+    mkdir -p bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG || echo "Already exists"
+    cp bitcoin-binaries/$GITHUB_TAG/* bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/
+    chmod +x bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/*
 
   configure_git: &configure_git |
     git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"

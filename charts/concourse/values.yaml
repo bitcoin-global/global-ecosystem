@@ -87,7 +87,7 @@ concourse:
 
     ## Enable pipeline archiving functionality in the API
     ##
-    enableArchivePipeline: false
+    enableArchivePipeline:  true
     #
 
     ## Enable automatic rerunning of builds when worker disappears
@@ -324,7 +324,7 @@ concourse:
 
     ## Default days to retain build logs. 0 means unlimited.
     ##
-    defaultDaysToRetainBuildLogs:
+    defaultDaysToRetainBuildLogs: 30
 
     ## Maximum days to retain build logs, 0 means not specified. Will override values configured in jobs.
     ##
@@ -396,7 +396,7 @@ concourse:
       ## When true, namespaces are not deleted when the release is deleted.
       ## Irrelevant if the namespaces are not created by this chart.
       ##
-      keepNamespaces: false
+      keepNamespaces: true
 
       ## Path to Kubernetes config when running ATC outside Kubernetes.
       ##
@@ -806,7 +806,7 @@ concourse:
 
       ## Length of time for which tokens are valid. Afterwards, users will have to log back in.
       ## The value must be specified as Go duration values (e.g.: 30m or 24h).
-      duration: 24h
+      duration: 6h
 
       mainTeam:
         config: |
@@ -964,7 +964,7 @@ concourse:
       ## Authentication (GitHub)
       ##
       github:
-        enabled: false
+        enabled: true
 
         ## Hostname of GitHub Enterprise deployment (No scheme, No trailing slash)
         ##
@@ -1431,7 +1431,7 @@ concourse:
       ## Driver to use for managing volumes.
       ## Possible values: detect, naive, btrfs, and overlay.
       ##
-      driver: overlay
+      driver: btrfs
 
       ## Path to btrfs binary
       ##
@@ -1883,8 +1883,8 @@ worker:
   ##
   resources:
     requests:
-      cpu: "100m"
-      memory: "512Mi"
+      cpu: "1000m"
+      memory: "4700Mi"
 
   ## Configure additional environment variables for the
   ## worker container(s)
