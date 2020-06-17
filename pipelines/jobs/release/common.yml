@@ -5,21 +5,24 @@ meta:
     chmod u+x ./gitian-build.py
     entrypoint.sh
 
+  configure_git: &configure_git |
+    git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+    git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
+
   get_version: &get_version |
     TEMP_TAG=$(grep -e "$(cat ./bitcoin-global/.git/HEAD)" ./bitcoin-global/.git/packed-refs | head -n1 | cut -d ' ' -f 2)
     export GITHUB_TAG=${TEMP_TAG##*/}
 
-  run_release: &run_release |
+  release_setup: &release_setup |
     ./gitian-build.py --docker --commit --setup fhivemind $GITHUB_TAG
+
+  run_release: &run_release |
     ./gitian-build.py --docker --detach-sign -o $RELEASE_TYPE --commit -j 2 -m 4000 -b fhivemind $GITHUB_TAG
 
+    # Add release files to bitcoin tools folder
     mkdir -p bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG || echo "Already exists"
     cp bitcoin-binaries/$GITHUB_TAG/* bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/
     chmod +x bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/*
-
-  configure_git: &configure_git |
-    git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-    git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
 
   semvers: &semvers |
     /v(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/

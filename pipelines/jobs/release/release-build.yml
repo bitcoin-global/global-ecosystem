@@ -27,6 +27,7 @@ meta_plan:
     - (( grab meta.run_base_setup ))
     - (( grab meta.configure_git ))
     - (( grab meta.get_version ))
+    - (( grab meta.release_setup ))
     - (( grab meta.run_release ))
 
   release-windows:
@@ -34,6 +35,7 @@ meta_plan:
     - (( grab meta.run_base_setup ))
     - (( grab meta.configure_git ))
     - (( grab meta.get_version ))
+    - (( grab meta.release_setup ))
     - (( grab meta.run_release ))
 
   release-mac:
@@ -41,8 +43,9 @@ meta_plan:
     - (( grab meta.run_base_setup ))
     - (( grab meta.configure_git ))
     - (( grab meta.get_version ))
+    - (( grab meta.release_setup ))
     - |
-      mkdir ./gitian-builder/inputs
+      mkdir -p ./gitian-builder/inputs
       curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
         --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
     - (( grab meta.run_release ))
@@ -140,15 +143,7 @@ jobs:
         path: bash
         args:
           - -exc
-          - |
-            git config --global user.email "sevice-account@bitcoin-global.dev"
-            git config --global user.name "sa-builder"
-
-            cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
-            cd bitcoin-tools/
-
-            git add .
-            git commit -m "Adding binaries"
+          - (( join "\n" meta_plan.release-pack ))
 
       outputs:
         - name: bitcoin-tools
