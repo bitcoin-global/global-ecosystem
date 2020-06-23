@@ -1,28 +1,5 @@
 ---
 meta:
-  project-data: &project-data
-    SERVICE_ACCOUNT               : ((gcp.service-account-email))
-    GCLOUD_CREDENTIALS            : ((gcp.service-account))
-    GCP_PROJECT                   : bitcoin-global-playground
-    GKE_CLUSTER                   : eu-master-cluster
-    GKE_CLUSTER_ZONE              : europe-west1-b
-    GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
-    GITHUB_TOKEN                  : ((git.token))
-    PRIVATE_KEY                   : ((ssh.private))
-    PUBLIC_KEY                    : ((ssh.public))
-    GPG_KEY                       : ((gpg.private))
-    GPG_PASSPHRASE                : ((gpg.passphrase))
-
-  builder-params: &builder-params
-    params:
-      <<                    : *project-data
-      BUILDER_VM_NAME       : master-bitcoin-builder
-      BUILDER_VM_ZONE       : europe-west1-b
-      BUILDER_VM_SIZE       : custom-8-8192
-      BUILDER_DISK_SIZE     : 100GB
-      BUILDER_DISK_TYPE     : pd-ssd
-      BUILDER_SCRIPT_PATH   : /tmp/builder-startup.sh
-  
   export-gcloud-json: |
     echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
 
