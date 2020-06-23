@@ -7,11 +7,12 @@ meta_plan:
     <: (( inject meta.builder-params ))
 
   provision-vm:
-    - (( grab meta.configure-git ))
+    - (( grab meta.configure_git ))
     - (( grab meta.export-gcloud-json ))
     - (( grab meta.export-startup-script ))
     - |
       # Deploy Builder VM on GCP
+      chmod +x bitcoin-infra/scripts/add-vm.sh
       bitcoin-infra/scripts/add-vm.sh \
         --name="$BUILDER_VM_NAME" \
         --zone="$BUILDER_VM_ZONE" \
@@ -35,7 +36,7 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: bitcoin-builder
+        - name: bitcoin-infra
       run:
         user: root
         path: bash

@@ -21,7 +21,7 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 info "Configuring Google dependencies and Kubernetes secrets..."
 
 # ===================== Ensure logged in to GCP
-./login.sh
+${SCRIPT_ROOT}/login.sh
 
 # ===================== Remove Helm chart
 helm delete concourse

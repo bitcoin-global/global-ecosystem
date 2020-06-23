@@ -84,11 +84,11 @@ cd ..
 info "Configuring Google dependencies and Kubernetes secrets..."
 
 # ===================== Ensure logged in to GCP
-# ./login.sh
+${SCRIPT_ROOT}/login.sh
 
 # ===================== Configuring GCP DNS configs
-./setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
-./dns-record.sh --name="dev-bitcoin-global" --domain="ci.bitcoin-global.dev" --type="CNAME"
+${SCRIPT_ROOT}/setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
+${SCRIPT_ROOT}/dns-record.sh --name="dev-bitcoin-global" --domain="ci.bitcoin-global.dev" --type="CNAME"
 
 # ===================== Adding K8s secrets
 INSTALLED_CHARTS=$(helm list -oyaml)

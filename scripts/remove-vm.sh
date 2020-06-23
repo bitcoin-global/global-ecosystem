@@ -37,7 +37,7 @@ kill_if_empty "--zone" $VM_ZONE
 info "Configuring Google Cloud..."
 
 # ===================== Ensure logged in to GCP
-./login.sh
+${SCRIPT_ROOT}/login.sh
 
 # ===================== Create or start isntance
 VM_INSTANCE=$(gcloud compute instances list --filter="name:($VM_NAME)" --format yaml)

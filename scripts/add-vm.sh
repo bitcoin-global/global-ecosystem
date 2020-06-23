@@ -45,7 +45,7 @@ if [ -z $VM_SCRIPT ];
 then
     VM_SCRIPT_TAG=""
 else
-    VM_SCRIPT_TAG="--metadata-from-file startup-script=$VM_SCRIPT"
+    VM_SCRIPT_TAG="--metadata-from-file startup-script=$VM_SCRIPT_PATH"
 fi
 
 ###############################################################################
@@ -54,7 +54,7 @@ fi
 info "Configuring Google Cloud..."
 
 # ===================== Ensure logged in to GCP
-./login.sh
+${SCRIPT_ROOT}/login.sh
 
 # ===================== Create or start isntance
 VM_INSTANCE=$(gcloud compute instances list --filter="name:($VM_NAME)" --format yaml)
