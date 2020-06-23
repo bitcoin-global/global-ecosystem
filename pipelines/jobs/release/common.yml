@@ -18,13 +18,13 @@ meta:
       <<                    : *project-data
       BUILDER_VM_NAME       : master-bitcoin-builder
       BUILDER_VM_ZONE       : europe-west1-b
-      BUILDER_VM_SIZE       : n2-highcpu-8
+      BUILDER_VM_SIZE       : custom-8-8192
       BUILDER_DISK_SIZE     : 100GB
       BUILDER_DISK_TYPE     : pd-ssd
       BUILDER_SCRIPT_PATH   : /tmp/builder-startup.sh
   
   export-gcloud-json: |
-    echo -e "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
 
   run_base_setup: &run_base_setup |
     # cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py

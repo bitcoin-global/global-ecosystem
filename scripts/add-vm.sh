@@ -17,17 +17,17 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 for i in "$@"
 do
 case $i in
-    -n=*|--name=*)              VM_NAME="${i#*=}" 
+    -n=*|--name=*)         VM_NAME="${i#*=}" 
     shift ;;
-    -d=*|--zone=*)              VM_ZONE="${i#*=}"
+    -z=*|--zone=*)         VM_ZONE="${i#*=}"
     shift ;;
-    -t=*|--script-path=*)       VM_SCRIPT="${i#*=}"
+    --script-path=*)       VM_SCRIPT="${i#*=}"
     shift ;;
-    -t=*|--size=*)              VM_SIZE="${i#*=}"
+    --size=*)              VM_SIZE="${i#*=}"
     shift ;;
-    -t=*|--disk-size=*)         DISK_SIZE="${i#*=}"
+    --disk-size=*)         DISK_SIZE="${i#*=}"
     shift ;;
-    -t=*|--disk-type=*)         DISK_TYPE="${i#*=}"
+    --disk-type=*)         DISK_TYPE="${i#*=}"
     shift ;;
     *) error "Unknown parameter passed: $i"; exit 1 ;;
 esac
@@ -45,7 +45,7 @@ if [ -z $VM_SCRIPT ];
 then
     VM_SCRIPT_TAG=""
 else
-    VM_SCRIPT_TAG="--metadata-from-file startup-script=$VM_SCRIPT_PATH"
+    VM_SCRIPT_TAG="--metadata-from-file startup-script=$VM_SCRIPT"
 fi
 
 ###############################################################################

@@ -18,7 +18,7 @@ meta_plan:
         --zone="$BUILDER_VM_ZONE" \
         --size="$BUILDER_VM_SIZE" \
         --disk-size="$BUILDER_DISK_SIZE" \
-        --disk-type="$BUILDER_DISK_TYPE"
+        --disk-type="$BUILDER_DISK_TYPE" \
         --script-path="$BUILDER_SCRIPT_PATH"
 
 ### Pipeline config
