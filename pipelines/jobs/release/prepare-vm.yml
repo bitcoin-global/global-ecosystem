@@ -7,6 +7,9 @@ meta_plan:
     <: (( inject meta.builder-params ))
 
   provision-vm:
+    - (( grab meta.configure-git ))
+    - (( grab meta.export-gcloud-json ))
+    - (( grab meta.export-startup-script ))
     - |
       # Deploy Builder VM on GCP
       bitcoin-infra/scripts/add-vm.sh \
@@ -15,7 +18,7 @@ meta_plan:
         --size="$BUILDER_VM_SIZE" \
         --disk-size="$BUILDER_DISK_SIZE" \
         --disk-type="$BUILDER_DISK_TYPE"
-        --script="'$BUILDER_STARTUP_SCRIPT'"
+        --script-path="$BUILDER_SCRIPT_PATH"
 
 ### Pipeline config
 jobs:
@@ -25,6 +28,7 @@ jobs:
   plan:
   - in_parallel:
     - get: bitcoin-infra
+    - get: bitcoin-builder
 
   - task: Provision VM
     <<: *provision-config

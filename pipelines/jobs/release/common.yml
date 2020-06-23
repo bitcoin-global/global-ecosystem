@@ -21,7 +21,7 @@ meta:
       BUILDER_VM_SIZE       : n2-highcpu-8
       BUILDER_DISK_SIZE     : 100GB
       BUILDER_DISK_TYPE     : pd-ssd
-      BUILDER_STARTUP_SCRIPT: (( grab meta.builder-startup-script ))
+      BUILDER_SCRIPT_PATH   : /tmp/builder-startup.sh
   
   export-gcloud-json: |
     echo -e "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
@@ -59,6 +59,11 @@ meta:
   semvers: &semvers |
     /v(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/
 
-  builder-startup-script: &builder-startup-script
+  export-startup-script: &export-startup-script |
+    cat <<EOF > $BUILDER_SCRIPT_PATH
+    # Startup script for builder
+
     echo "hello word"
     echo "I am working"
+
+    EOF
