@@ -1,9 +1,36 @@
 ---
 meta:
+  project-data: &project-data
+    SERVICE_ACCOUNT               : ((gcp.service-account-email))
+    GCLOUD_CREDENTIALS            : ((gcp.service-account))
+    GCP_PROJECT                   : bitcoin-global-playground
+    GKE_CLUSTER                   : eu-master-cluster
+    GKE_CLUSTER_ZONE              : europe-west1-b
+    GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
+    GITHUB_TOKEN                  : ((git.token))
+    PRIVATE_KEY                   : ((ssh.private))
+    PUBLIC_KEY                    : ((ssh.public))
+    GPG_KEY                       : ((gpg.private))
+    GPG_PASSPHRASE                : ((gpg.passphrase))
+
+  builder-params: &builder-params
+    params:
+      <<                    : *project-data
+      BUILDER_VM_NAME       : master-bitcoin-builder
+      BUILDER_VM_ZONE       : europe-west1-b
+      BUILDER_VM_SIZE       : n2-highcpu-8
+      BUILDER_DISK_SIZE     : 100GB
+      BUILDER_DISK_TYPE     : pd-ssd
+      BUILDER_STARTUP_SCRIPT: (( grab meta.builder-startup-script ))
+  
+  export-gcloud-json: |
+    echo -e "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+
   run_base_setup: &run_base_setup |
-    cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
-    chmod u+x ./gitian-build.py
+    # cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
+    # chmod u+x ./gitian-build.py
     entrypoint.sh
+    service apt-cacher-ng restart
 
   configure_git: &configure_git |
     git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
@@ -14,10 +41,15 @@ meta:
     export GITHUB_TAG=${TEMP_TAG##*/}
 
   release_setup: &release_setup |
-    ./gitian-build.py --docker --commit --setup fhivemind $GITHUB_TAG
+    git clone https://github.com/fhivemind/gitian-builder.git
+
+    sudo apt-get install -y cgroup-lite
+    sudo cgroups-mount
+
+    ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
 
   run_release: &run_release |
-    ./gitian-build.py --docker --detach-sign -o $RELEASE_TYPE --commit -j 2 -m 4000 -b fhivemind $GITHUB_TAG
+    ./gitian-build.py --detach-sign -o $RELEASE_TYPE --commit -j 7 -m 6000 -b fhivemind $GITHUB_TAG
 
     # Add release files to bitcoin tools folder
     mkdir -p bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG || echo "Already exists"
@@ -26,3 +58,7 @@ meta:
 
   semvers: &semvers |
     /v(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/
+
+  builder-startup-script: &builder-startup-script
+    echo "hello word"
+    echo "I am working"

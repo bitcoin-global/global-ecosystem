@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "btg-node.fullname" . }}
+  labels:
+    {{- include "btg-node.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if .Values.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{ end }}
+  ports:
+    - port: {{ .Values.service.ports.bitglobal.mainnet }}
+      targetPort: btg-mainnet
+      protocol: TCP
+      name: btg-mainnet
+    - port: {{ .Values.service.ports.bitglobal.testnet }}
+      targetPort: btg-testnet
+      protocol: TCP
+      name: btg-testnet
+  {{- if .Values.service.exposeBitcoin }}
+    - port: {{ .Values.service.ports.bitcoin.mainnet }}
+      targetPort: btc-mainnet
+      protocol: TCP
+      name: btc-mainnet
+    - port: {{ .Values.service.ports.bitcoin.testnet }}
+      targetPort: btc-testnet
+      protocol: TCP
+      name: btc-testnet
+  {{ end }}
+  selector:
+    {{- include "btg-node.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,40 @@
+---
+### Resource overrides
+meta_plan:
+  provision-config: &provision-config
+    image: bitcoin-builder
+    privileged: true
+    <: (( inject meta.builder-params ))
+
+  provision-vm:
+    - |
+      # Deploy Builder VM on GCP
+      bitcoin-infra/scripts/add-vm.sh \
+        --name="$BUILDER_VM_NAME" \
+        --zone="$BUILDER_VM_ZONE" \
+        --size="$BUILDER_VM_SIZE" \
+        --disk-size="$BUILDER_DISK_SIZE" \
+        --disk-type="$BUILDER_DISK_TYPE"
+        --script="'$BUILDER_STARTUP_SCRIPT'"
+
+### Pipeline config
+jobs:
+- name: provision-build-vm
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: bitcoin-infra
+
+  - task: Provision VM
+    <<: *provision-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-builder
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.provision-vm ))

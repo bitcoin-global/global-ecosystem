@@ -7,7 +7,7 @@ spruce:
   - with:
       files:
       - resources/docker.builder.yml
-      - resources/git.bitcoin-tools.yml
+      - resources/git.bitcoin-infra.yml
   - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
   to: ignore.builder.pipeline.yml

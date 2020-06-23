@@ -7,3 +7,4 @@ resources:
     username: _json_key
     password: ((gcp.service-account))
     repository: (( grab meta.builder-repository ))
+    tag: latest

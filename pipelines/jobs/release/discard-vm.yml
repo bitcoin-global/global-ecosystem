@@ -1,0 +1,41 @@
+---
+### Resource overrides
+meta_plan:
+  discard-config: &discard-config
+    image: bitcoin-builder
+    privileged: true
+    <: (( inject meta.builder-params ))
+
+  discard-vm:
+    - |
+      # Deploy Builder VM on GCP
+      bitcoin-infra/scripts/add-vm.sh \
+        --name="$BUILDER_VM_NAME" \
+        --zone="$BUILDER_VM_ZONE" \
+        --size="$BUILDER_VM_SIZE" \
+        --disk-size="$BUILDER_DISK_SIZE" \
+        --disk-type="$BUILDER_DISK_TYPE"
+        --script="'$BUILDER_STARTUP_SCRIPT'"
+
+### Pipeline config
+jobs:
+- name: deprovision-build-vm
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: bitcoin-infra
+      passed: [build-releases]
+
+  - task: Discard VM
+    <<: *discard-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-builder
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.discard-vm ))

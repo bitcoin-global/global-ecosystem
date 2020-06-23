@@ -1,10 +1,10 @@
 ---
 jobs:
-- name: deploy-builder
+- name: make-builder
   serial: true
   plan:
-  - get: bitcoin-tools
+  - get: bitcoin-infra
   - put: bitcoin-builder
     params:
-      build: bitcoin-tools/builder
-      additional_tags: bitcoin-tools/builder/version
+      build: bitcoin-infra/src/builder
+      additional_tags: bitcoin-infra/src/builder/version

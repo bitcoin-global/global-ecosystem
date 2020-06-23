@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "btg-node.fullname" . }}
+  labels:
+    {{- include "btg-node.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "btg-node.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "btg-node.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "btg-node.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: bit-global-node
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: 
+          {{  range .Values.command }}
+            - {{ . }}
+          {{ end }}
+          ports:
+            - name: btg-mainnet
+              containerPort: {{ .Values.service.ports.bitglobal.mainnet }}
+              protocol: TCP
+            - name: btg-testnet
+              containerPort: {{ .Values.service.ports.bitglobal.testnet }}
+              protocol: TCP
+          {{- if .Values.service.exposeBitcoin }}
+            - name: btc-mainnet
+              containerPort: {{ .Values.service.ports.bitcoin.mainnet }}
+              protocol: TCP
+            - name: btc-testnet
+              containerPort: {{ .Values.service.ports.bitcoin.testnet }}
+              protocol: TCP
+          {{ end }}
+          env:
+            - name: BITCOIN_RPC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "btg-node.fullname" . }}-rpcsecret
+                  key: rpcuser
+            - name: BITCOIN_RPC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "btg-node.fullname" . }}-rpcsecret
+                  key: rpcpass
+          volumeMounts:
+          - mountPath: /bitcoin-global
+            name: bitcoin-global-pv
+      {{- if .Values.image.pullSecrets }}
+      imagePullSecrets:
+      - name: {{ .Values.image.pullSecrets.name | quote }}
+      {{ end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+  volumeClaimTemplates:
+  - metadata:
+      name: bitcoin-global-pv
+    spec:
+      accessModes: 
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 500Gi

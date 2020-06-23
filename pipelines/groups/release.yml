@@ -2,4 +2,6 @@
 groups:
 - name: release
   jobs:
+  - provision-build-vm
   - build-releases
+  - deprovision-build-vm

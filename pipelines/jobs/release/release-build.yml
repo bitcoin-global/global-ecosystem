@@ -23,44 +23,42 @@ meta:
 ### Plan overrides
 meta_plan:
   release-linux:
-    - export RELEASE_TYPE=l
-    - (( grab meta.run_base_setup ))
-    - (( grab meta.configure_git ))
-    - (( grab meta.get_version ))
-    - (( grab meta.release_setup ))
-    - (( grab meta.run_release ))
+  #   - export RELEASE_TYPE=l
+  #   - (( grab meta.run_base_setup ))
+  #   - (( grab meta.configure_git ))
+  #   - (( grab meta.get_version ))
+  #   - (( grab meta.release_setup ))
+  #   - (( grab meta.run_release ))
 
-  release-windows:
-    - export RELEASE_TYPE=w
-    - (( grab meta.run_base_setup ))
-    - (( grab meta.configure_git ))
-    - (( grab meta.get_version ))
-    - (( grab meta.release_setup ))
-    - (( grab meta.run_release ))
+  # release-windows:
+  #   - export RELEASE_TYPE=w
+  #   - (( grab meta.run_base_setup ))
+  #   - (( grab meta.configure_git ))
+  #   - (( grab meta.get_version ))
+  #   - (( grab meta.release_setup ))
+  #   - (( grab meta.run_release ))
 
-  release-mac:
-    - export RELEASE_TYPE=m
-    - (( grab meta.run_base_setup ))
-    - (( grab meta.configure_git ))
-    - (( grab meta.get_version ))
-    - (( grab meta.release_setup ))
-    - |
-      mkdir -p ./gitian-builder/inputs
-      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
-        --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
-    - (( grab meta.run_release ))
+  # release-mac:
+  #   - export RELEASE_TYPE=m
+  #   - (( grab meta.run_base_setup ))
+  #   - (( grab meta.configure_git ))
+  #   - (( grab meta.get_version ))
+  #   - (( grab meta.release_setup ))
+  #   - |
+  #     mkdir -p ./gitian-builder/inputs
+  #     curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
+  #       --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
+  #   - (( grab meta.run_release ))
 
-  release-pack:
-    - (( grab meta.get_version ))
-    - |
-      git config --global user.email "sevice-account@bitcoin-global.dev"
-      git config --global user.name "sa-builder"
-
-      cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
-      cd bitcoin-tools/
-
-      git add .
-      git commit -m "Adding Bitcoin Global v$GITHUB_TAG binaries"
+  # release-pack:
+  #   - (( grab meta.get_version ))
+  #   - |
+  #     git config --global user.email "sevice-account@bitcoin-global.dev"
+  #     git config --global user.name "sa-builder"
+  #     cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
+  #     cd bitcoin-tools/
+  #     git add .
+  #     git commit -m "Adding Bitcoin Global v$GITHUB_TAG binaries"
 
 ### Pipeline config
 jobs:
@@ -69,19 +67,21 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: bitcoin-global
-      trigger: true
+    # - get: bitcoin-global
+    #   trigger: true
+    - get: bitcoin-infra
+      passed: [provision-build-vm]
     - get: bitcoin-builder
     - get: bitcoin-tools
 
   - in_parallel:
     - task: Release Linux
-      privileged: true
       <<: *release-task-config
       config:
         platform: linux
         inputs:
-          - name: bitcoin-global
+         # - name: bitcoin-global
+          - name: bitcoin-tools
           - name: bitcoin-builder
         run:
           user: root
@@ -89,64 +89,62 @@ jobs:
           args:
             - -exc
             - (( join "\n" meta_plan.release-linux ))
-        outputs:
-          - name: bitcoin-tools-l
+  
+   # - task: Release Windows
+   #   privileged: true
+   #   <<: *release-task-config
+   #   config:
+   #     platform: linux
+   #     inputs:
+   #       - name: bitcoin-global
+   #       - name: bitcoin-builder
+   #     run:
+   #       user: root
+   #       path: bash
+   #       args:
+   #         - -exc
+   #         - (( join "\n" meta_plan.release-windows ))
+   #     outputs:
+   #       - name: bitcoin-tools-w
 
-    - task: Release Windows
-      privileged: true
-      <<: *release-task-config
-      config:
-        platform: linux
-        inputs:
-          - name: bitcoin-global
-          - name: bitcoin-builder
-        run:
-          user: root
-          path: bash
-          args:
-            - -exc
-            - (( join "\n" meta_plan.release-windows ))
-        outputs:
-          - name: bitcoin-tools-w
+   # - task: Release Mac
+   #   privileged: true
+   #   <<: *release-task-config
+   #   config:
+   #     platform: linux
+   #     inputs:
+   #       - name: bitcoin-global
+   #       - name: bitcoin-builder
+   #     run:
+   #       user: root
+   #       path: bash
+   #       args:
+   #         - -exc
+   #         - (( join "\n" meta_plan.release-mac ))
+   #     outputs:
+   #       - name: bitcoin-tools-m
 
-    - task: Release Mac
-      privileged: true
-      <<: *release-task-config
-      config:
-        platform: linux
-        inputs:
-          - name: bitcoin-global
-          - name: bitcoin-builder
-        run:
-          user: root
-          path: bash
-          args:
-            - -exc
-            - (( join "\n" meta_plan.release-mac ))
-        outputs:
-          - name: bitcoin-tools-m
+  # - task: Pack binaries
+  #   privileged: true
+  #   <<: *release-task-config
+  #   config:
+  #     platform: linux
+  #     inputs:
+  #       - name: bitcoin-builder
+  #       - name: bitcoin-global
+  #       - name: bitcoin-tools
+  #       - name: bitcoin-tools-w
+  #       - name: bitcoin-tools-l
+  #       - name: bitcoin-tools-m
+  #     run:
+  #       user: root
+  #       path: bash
+  #       args:
+  #         - -exc
+  #         - (( join "\n" meta_plan.release-pack ))
 
-  - task: Pack binaries
-    privileged: true
-    <<: *release-task-config
-    config:
-      platform: linux
-      inputs:
-        - name: bitcoin-builder
-        - name: bitcoin-global
-        - name: bitcoin-tools
-        - name: bitcoin-tools-w
-        - name: bitcoin-tools-l
-        - name: bitcoin-tools-m
-      run:
-        user: root
-        path: bash
-        args:
-          - -exc
-          - (( join "\n" meta_plan.release-pack ))
-
-      outputs:
-        - name: bitcoin-tools
+  #     outputs:
+  #       - name: bitcoin-tools
 
   - put: bitcoin-tools
     params: 

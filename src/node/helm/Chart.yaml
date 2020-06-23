@@ -1,0 +1,4 @@
+apiVersion: v1
+description: Bitcoin Global Helm deployment chart
+name: btg-node
+version: 0.1.0

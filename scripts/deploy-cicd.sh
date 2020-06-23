@@ -19,6 +19,7 @@ SCRIPT_ROOT=$(dirname $(readlink -f "$0"))
 ARTIFACT_NAME=${CONCOURSE_NAME:-concourse}
 ARTIFACT_VERSION=${CONCOURSE_VERSION:-11.1.0}
 
+CONCOURSE_SECRETS_FOLDER=${CONCOURSE_SECRETS_FOLDER:-ignore.secret}
 CONCOURSE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-5c1c9014a8c93bdf5cc2}
 CONCOURSE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
 
@@ -120,3 +121,15 @@ info "Installing $ARTIFACT_NAME helm chart..."
 helm repo add concourse https://concourse-charts.storage.googleapis.com/
 helm upgrade --version 11.1.0 -f ../charts/concourse/values.yaml -f $OVERRIDES_FILE $ARTIFACT_NAME concourse/concourse \
     --install --wait --timeout 10m0s --atomic
+
+# ===================== Installing Helm chart
+info "Adding post-installation data..."
+for filename in $(find "$CONCOURSE_SECRETS_FOLDER/" -maxdepth 1 -type d)
+do
+  secret_name=${filename##*/}
+  if [ ! -z "$secret_name" ]
+  then
+    kubectl create secret generic $secret_name -n $ARTIFACT_NAME-main --from-file="$filename/" \
+      --dry-run=client -o yaml | kubectl apply -f -
+  fi
+done 

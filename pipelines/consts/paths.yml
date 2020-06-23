@@ -4,3 +4,4 @@ meta:
   builder-repository: eu.gcr.io/bitcoin-global-playground/builder
   bitcoin-global-repository: https://github.com/bitcoin-global/bitcoin-global.git
   bitcoin-tools-repository: https://github.com/bitcoin-global/bitcoin-tools.git
+  bitcoin-infra-repository: https://github.com/bitcoin-global/bitcoin-infrastructure.git
