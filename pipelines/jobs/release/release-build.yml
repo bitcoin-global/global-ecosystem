@@ -7,11 +7,15 @@ meta_plan:
     privileged: true
     <: (( inject meta.release-params ))
 
-  shutdown-config: &shutdown-config
+  vm-control-config: &vm-control-config
     image: builder
     timeout: 20m
     privileged: true
     <: (( inject meta.release-params ))
+
+  boot-vm:
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.make_builder ))
 
   build-release:
     - (( grab meta.configure_git ))
@@ -21,6 +25,7 @@ meta_plan:
     - (( join "\n" meta.builder_run ))
 
   shutdown-vm:
+    - (( grab meta.configure_gcloud ))
     - |
       # Power Off Builder VM on GCP
       bitcoin-infra/scripts/remove-vm.sh \
@@ -42,6 +47,19 @@ jobs:
     - get: bitcoin-infra
       passed: [provision-build-vm]
 
+  - task: Boot Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-global
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.boot-vm ))
+
   - task: Build release candidates
     <<: *release-config
     config:
@@ -55,22 +73,18 @@ jobs:
           - -exc
           - (( join "\n" meta_plan.build-release ))
   
-    # Whatever happens, make sure we have switched off the VM for cost reduction
-    on_success: &shudown
-      task: Shutdown Build VM
-      <<: *shutdown-config
-      config:
-        platform: linux
-        inputs:
-          - name: builder
-          - name: bitcoin-infra
-        run:
-          user: root
-          path: bash
-          args:
-            - -exc
-            - (( join "\n" meta_plan.shutdown-vm ))
-    on_failure:
-      <<: *shudown
-    on_abort:
-      <<: *shudown
+  # Whatever happens, make sure we have switched off the VM for cost reduction
+  ensure: &shudown
+    task: Shutdown Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: builder
+        - name: bitcoin-infra
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.shutdown-vm ))

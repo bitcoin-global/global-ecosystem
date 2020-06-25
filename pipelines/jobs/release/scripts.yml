@@ -25,6 +25,15 @@ meta:
   release_build: &release_build |
     ./gitian-build.py --detach-sign --no-commit -o $RELEASE_TYPE --commit -j16 -m15000 -B fhivemind $GITHUB_TAG
 
+  make_builder: &make_builder |
+    # Deploy Builder VM on GCP
+    bitcoin-infra/scripts/add-vm.sh \
+      --name="$BUILDER_VM_NAME" \
+      --zone="$BUILDER_VM_ZONE" \
+      --size="$BUILDER_VM_SIZE" \
+      --disk-size="$BUILDER_DISK_SIZE" \
+      --disk-type="$BUILDER_DISK_TYPE"
+
   wait_for_builder: &wait_for_builder |
     echo "Waiting until VM operational..."
     counter=0

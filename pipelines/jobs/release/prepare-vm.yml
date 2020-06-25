@@ -3,21 +3,14 @@
 meta_plan:
   provision-config: &provision-config
     image: builder
-    timeout: 10m
+    timeout: 20m
     privileged: true
     <: (( inject meta.release-params ))
 
   provision-vm:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
-    - |
-      # Deploy Builder VM on GCP
-      bitcoin-infra/scripts/add-vm.sh \
-        --name="$BUILDER_VM_NAME" \
-        --zone="$BUILDER_VM_ZONE" \
-        --size="$BUILDER_VM_SIZE" \
-        --disk-size="$BUILDER_DISK_SIZE" \
-        --disk-type="$BUILDER_DISK_TYPE"
+    - (( grab meta.make_builder ))
     - (( grab meta.wait_for_builder ))
     - (( join "\n" meta.builder_setup ))
 
