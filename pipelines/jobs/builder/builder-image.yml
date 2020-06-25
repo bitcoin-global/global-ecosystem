@@ -4,7 +4,7 @@ jobs:
   serial: true
   plan:
   - get: bitcoin-infra
-  - put: bitcoin-builder
+  - put: builder
     params:
       build: bitcoin-infra/src/builder
       additional_tags: bitcoin-infra/src/builder/version

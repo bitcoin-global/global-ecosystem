@@ -2,24 +2,24 @@
 ### Resource overrides
 meta_plan:
   provision-config: &provision-config
-    image: bitcoin-builder
+    image: builder
+    timeout: 10m
     privileged: true
-    <: (( inject meta.builder-params ))
+    <: (( inject meta.release-params ))
 
   provision-vm:
     - (( grab meta.configure_git ))
-    - (( grab meta.export-gcloud-json ))
-    - (( grab meta.export-startup-script ))
+    - (( grab meta.configure_gcloud ))
     - |
       # Deploy Builder VM on GCP
-      chmod +x bitcoin-infra/scripts/add-vm.sh
       bitcoin-infra/scripts/add-vm.sh \
         --name="$BUILDER_VM_NAME" \
         --zone="$BUILDER_VM_ZONE" \
         --size="$BUILDER_VM_SIZE" \
         --disk-size="$BUILDER_DISK_SIZE" \
-        --disk-type="$BUILDER_DISK_TYPE" \
-        --script-path="$BUILDER_SCRIPT_PATH"
+        --disk-type="$BUILDER_DISK_TYPE"
+    - (( grab meta.wait_for_builder ))
+    - (( join "\n" meta.builder_setup ))
 
 ### Pipeline config
 jobs:
@@ -27,9 +27,12 @@ jobs:
   build_logs_to_retain: 3
   serial: true
   plan:
+
   - in_parallel:
     - get: bitcoin-infra
-    - get: bitcoin-builder
+    - get: bitcoin-global
+      trigger: true
+    - get: builder
 
   - task: Provision VM
     <<: *provision-config
@@ -37,6 +40,7 @@ jobs:
       platform: linux
       inputs:
         - name: bitcoin-infra
+        - name: bitcoin-global
       run:
         user: root
         path: bash

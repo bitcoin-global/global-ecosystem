@@ -1,13 +1,11 @@
 ---
 meta:
-  export-gcloud-json: |
+  configure_gcloud: &configure_gcloud |
     echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
-
-  run_base_setup: &run_base_setup |
-    # cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
-    # chmod u+x ./gitian-build.py
-    entrypoint.sh
-    service apt-cacher-ng restart
+    gcloud auth activate-service-account \
+      $SERVICE_ACCOUNT --key-file=$GOOGLE_APPLICATION_CREDENTIALS --project=$GCP_PROJECT
+    mkdir -p /home/gkh/.ssh/
+    gcloud compute config-ssh -q
 
   configure_git: &configure_git |
     git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
@@ -17,30 +15,59 @@ meta:
     TEMP_TAG=$(grep -e "$(cat ./bitcoin-global/.git/HEAD)" ./bitcoin-global/.git/packed-refs | head -n1 | cut -d ' ' -f 2)
     export GITHUB_TAG=${TEMP_TAG##*/}
 
-  release_setup: &release_setup |
-    git clone https://github.com/fhivemind/gitian-builder.git
-
-    sudo apt-get install -y cgroup-lite
-    sudo cgroups-mount
-
+  release_prepare: &release_prepare |
+    echo "Setup release build configuration"
+    git clone https://github.com/bitcoin-global/bitcoin-global.git
+    cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
+    chmod u+x ./gitian-build.py
     ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
 
-  run_release: &run_release |
-    ./gitian-build.py --detach-sign -o $RELEASE_TYPE --commit -j 7 -m 6000 -b fhivemind $GITHUB_TAG
+  release_build: &release_build |
+    ./gitian-build.py --detach-sign --no-commit -o $RELEASE_TYPE --commit -j16 -m15000 -B fhivemind $GITHUB_TAG
 
-    # Add release files to bitcoin tools folder
-    mkdir -p bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG || echo "Already exists"
-    cp bitcoin-binaries/$GITHUB_TAG/* bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/
-    chmod +x bitcoin-tools-$RELEASE_TYPE/binaries/$GITHUB_TAG/*
+  wait_for_builder: &wait_for_builder |
+    echo "Waiting until VM operational..."
+    counter=0
+    until gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT --command 'echo'; do
+        counter=$((counter+1))
+        if [[ "$counter" -gt 120 ]]; then
+            echo "Timed out!"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Success!"
+    
+  builder_setup: &builder_setup
+    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
+    - |
+      #! /bin/bash
+      echo "Env config"
+      export GITHUB_TAG=${GITHUB_TAG}
+      export GITHUB_TOKEN=${GITHUB_TOKEN}
+    - |
+      echo "Prepare machine"
+      apt-get update
+      apt-get install git software-properties-common python3.6 sudo nano apt-cacher-ng ruby make wget curl python-vm-builder qemu-kvm qemu-utils -y
+      service apt-cacher-ng start
+    - (( grab meta.configure_git ))
+    - (( grab meta.release_prepare ))
+    - shutdown --reboot 0 && exit
+    - EOF
 
-  semvers: &semvers |
-    /v(?<=^[Vv]|^)(?:(?<major>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<minor>(?:0|[1-9](?:(?:0|[1-9])+)*))[.](?<patch>(?:0|[1-9](?:(?:0|[1-9])+)*))(?:-(?<prerelease>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:0|[1-9](?:(?:0|[1-9])+)*)))*))?(?:[+](?<build>(?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+))(?:[.](?:(?:(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?|(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)(?:[A-Za-z]|-)(?:(?:(?:0|[1-9])|(?:[A-Za-z]|-))+)?)|(?:(?:0|[1-9])+)))*))?)$/
-
-  export-startup-script: &export-startup-script |
-    cat <<EOF > $BUILDER_SCRIPT_PATH
-    # Startup script for builder
-
-    echo "hello word"
-    echo "I am working"
-
-    EOF
+  builder_run: &builder_run
+    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
+    - |
+      echo "Release config..."
+      export RELEASE_TYPE=${RELEASE_TYPE}
+      export GITHUB_TAG=${GITHUB_TAG}
+      export GITHUB_TOKEN=${GITHUB_TOKEN}
+    - |
+      echo "Downloading dependencies..."
+      mkdir -p ./gitian-builder/inputs
+      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
+        --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
+    - echo "Building releases..."
+    - (( grab meta.release_build ))
+    - exit
+    - EOF

@@ -1,6 +1,6 @@
 ---
 resources:
-- name: bitcoin-builder
+- name: builder
   type: docker-image
   icon: docker
   source:

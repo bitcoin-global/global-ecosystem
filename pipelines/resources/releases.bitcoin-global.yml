@@ -1,0 +1,15 @@
+---
+resource_types:
+- name: git-multibranch
+  type: docker-image
+  source:
+    repository: cfcommunity/git-multibranch-resource
+
+resources:
+- name: bitcoin-global
+  type: git-multibranch
+  icon: github
+  source:
+    uri: (( grab meta.bitcoin-global-repository-ssh ))
+    private_key: ((ssh.private))
+    branches: (( grab meta.semvers || ".*" ))

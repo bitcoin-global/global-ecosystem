@@ -1,64 +1,31 @@
 ---
 ### Resource overrides
-meta:
-  ### Shared task config
-  release-task-config: &release-task-config
-    image: bitcoin-builder
-    privileged: true
-    params:
-      GITHUB_TOKEN: ((git.token))
-      PRIVATE_KEY: ((ssh.private))
-      PUBLIC_KEY: ((ssh.public))
-      GPG_KEY: ((gpg.private))
-      GPG_PASSPHRASE: ((gpg.passphrase))
-      DOCKER_DRIVER: btrfs
-      DOCKER_OPTS: -s btrfs
-      DOCKERD_TIMEOUT: 60
-
-  overrides:
-    bitcoin-global:
-      git:
-        branch: bootstrap
-
-### Plan overrides
 meta_plan:
-  release-linux:
-  #   - export RELEASE_TYPE=l
-  #   - (( grab meta.run_base_setup ))
-  #   - (( grab meta.configure_git ))
-  #   - (( grab meta.get_version ))
-  #   - (( grab meta.release_setup ))
-  #   - (( grab meta.run_release ))
+  release-config: &release-config
+    image: builder
+    timeout: 4h
+    privileged: true
+    <: (( inject meta.release-params ))
 
-  # release-windows:
-  #   - export RELEASE_TYPE=w
-  #   - (( grab meta.run_base_setup ))
-  #   - (( grab meta.configure_git ))
-  #   - (( grab meta.get_version ))
-  #   - (( grab meta.release_setup ))
-  #   - (( grab meta.run_release ))
+  shutdown-config: &shutdown-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    <: (( inject meta.release-params ))
 
-  # release-mac:
-  #   - export RELEASE_TYPE=m
-  #   - (( grab meta.run_base_setup ))
-  #   - (( grab meta.configure_git ))
-  #   - (( grab meta.get_version ))
-  #   - (( grab meta.release_setup ))
-  #   - |
-  #     mkdir -p ./gitian-builder/inputs
-  #     curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
-  #       --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
-  #   - (( grab meta.run_release ))
+  build-release:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.wait_for_builder ))
+    - (( grab meta.get_version ))
+    - (( join "\n" meta.builder_run ))
 
-  # release-pack:
-  #   - (( grab meta.get_version ))
-  #   - |
-  #     git config --global user.email "sevice-account@bitcoin-global.dev"
-  #     git config --global user.name "sa-builder"
-  #     cp -r bitcoin-tools-{w,l,m}/* bitcoin-tools/
-  #     cd bitcoin-tools/
-  #     git add .
-  #     git commit -m "Adding Bitcoin Global v$GITHUB_TAG binaries"
+  shutdown-vm:
+    - |
+      # Power Off Builder VM on GCP
+      bitcoin-infra/scripts/remove-vm.sh \
+        --name="$BUILDER_VM_NAME" \
+        --zone="$BUILDER_VM_ZONE"
 
 ### Pipeline config
 jobs:
@@ -67,86 +34,43 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    # - get: bitcoin-global
-    #   trigger: true
+    - get: bitcoin-global
+      passed: [provision-build-vm]
+      trigger: true
+    - get: builder
+      passed: [provision-build-vm]
     - get: bitcoin-infra
       passed: [provision-build-vm]
-    - get: bitcoin-builder
-    - get: bitcoin-tools
 
-  - in_parallel:
-    - task: Release Linux
-      <<: *release-task-config
+  - task: Build release candidates
+    <<: *release-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-global
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.build-release ))
+  
+    # Whatever happens, make sure we have switched off the VM for cost reduction
+    on_success: &shudown
+      task: Shutdown Build VM
+      <<: *shutdown-config
       config:
         platform: linux
         inputs:
-         # - name: bitcoin-global
-          - name: bitcoin-tools
-          - name: bitcoin-builder
+          - name: builder
+          - name: bitcoin-infra
         run:
           user: root
           path: bash
           args:
             - -exc
-            - (( join "\n" meta_plan.release-linux ))
-  
-   # - task: Release Windows
-   #   privileged: true
-   #   <<: *release-task-config
-   #   config:
-   #     platform: linux
-   #     inputs:
-   #       - name: bitcoin-global
-   #       - name: bitcoin-builder
-   #     run:
-   #       user: root
-   #       path: bash
-   #       args:
-   #         - -exc
-   #         - (( join "\n" meta_plan.release-windows ))
-   #     outputs:
-   #       - name: bitcoin-tools-w
-
-   # - task: Release Mac
-   #   privileged: true
-   #   <<: *release-task-config
-   #   config:
-   #     platform: linux
-   #     inputs:
-   #       - name: bitcoin-global
-   #       - name: bitcoin-builder
-   #     run:
-   #       user: root
-   #       path: bash
-   #       args:
-   #         - -exc
-   #         - (( join "\n" meta_plan.release-mac ))
-   #     outputs:
-   #       - name: bitcoin-tools-m
-
-  # - task: Pack binaries
-  #   privileged: true
-  #   <<: *release-task-config
-  #   config:
-  #     platform: linux
-  #     inputs:
-  #       - name: bitcoin-builder
-  #       - name: bitcoin-global
-  #       - name: bitcoin-tools
-  #       - name: bitcoin-tools-w
-  #       - name: bitcoin-tools-l
-  #       - name: bitcoin-tools-m
-  #     run:
-  #       user: root
-  #       path: bash
-  #       args:
-  #         - -exc
-  #         - (( join "\n" meta_plan.release-pack ))
-
-  #     outputs:
-  #       - name: bitcoin-tools
-
-  - put: bitcoin-tools
-    params: 
-      repository: bitcoin-tools
-      branch: master
+            - (( join "\n" meta_plan.shutdown-vm ))
+    on_failure:
+      <<: *shudown
+    on_abort:
+      <<: *shudown

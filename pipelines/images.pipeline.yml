@@ -6,6 +6,7 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
+      - groups/docker-images.yml
       - resources/docker.builder.yml
       - resources/git.bitcoin-infra.yml
   - with_all_in: jobs/builder/
@@ -22,5 +23,5 @@ spruce:
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: bitcoin-builder
+  name: docker-images
   config: ignore.builder.pipeline.yml

@@ -2,20 +2,19 @@
 ### Resource overrides
 meta_plan:
   discard-config: &discard-config
-    image: bitcoin-builder
+    image: builder
+    timeout: 20m
     privileged: true
-    <: (( inject meta.builder-params ))
+    <: (( inject meta.release-params ))
 
   discard-vm:
+    - (( grab meta.configure_gcloud ))
     - |
-      # Deploy Builder VM on GCP
-      bitcoin-infra/scripts/add-vm.sh \
+      # Destroy Builder VM
+      bitcoin-infra/scripts/remove-vm.sh \
         --name="$BUILDER_VM_NAME" \
-        --zone="$BUILDER_VM_ZONE" \
-        --size="$BUILDER_VM_SIZE" \
-        --disk-size="$BUILDER_DISK_SIZE" \
-        --disk-type="$BUILDER_DISK_TYPE"
-        --script="'$BUILDER_STARTUP_SCRIPT'"
+        --zone="$BUILDER_VM_ZONE"
+        # --destroy
 
 ### Pipeline config
 jobs:
@@ -24,6 +23,11 @@ jobs:
   serial: true
   plan:
   - in_parallel:
+    - get: bitcoin-global
+      passed: [build-releases]
+      trigger: true
+    - get: builder
+      passed: [build-releases]
     - get: bitcoin-infra
       passed: [build-releases]
 
@@ -32,7 +36,8 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: bitcoin-builder
+        - name: builder
+        - name: bitcoin-infra
       run:
         user: root
         path: bash
