@@ -75,7 +75,7 @@ if [ -z "$VM_INSTANCE" ]; then
         --maintenance-policy=TERMINATE \
         $VM_PREEMPTIBLE \
         --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-        --image=ubuntu-1804-bionic-v20200610 \
+        --image=ubuntu-1604-xenial-v20200611 \
         --image-project=ubuntu-os-cloud \
         --boot-disk-size=$DISK_SIZE \
         --boot-disk-type=$DISK_TYPE \
