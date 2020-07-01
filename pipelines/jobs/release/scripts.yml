@@ -37,9 +37,8 @@ meta:
     apt-get update
     apt-get install -y \
       gnupg2 ca-certificates git software-properties-common \
-      python3.6 sudo nano apt-cacher-ng ruby make wget curl \
-      python-vm-builder qemu-kvm qemu-utils
-    service apt-cacher-ng start
+      python3.6 sudo nano apt-cacher-ng ruby make wget curl
+    service apt-cacher-ng restart
 
   gitian_dependencies: &gitian_dependencies |
     mkdir -p ./gitian-builder/inputs
@@ -69,11 +68,11 @@ meta:
     rm -rf ./bitcoin-detached-sigs
 
     ### Run release setup
-    ./gitian-build.py --commit --setup --docker fhivemind $GITHUB_TAG
+    ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
 
   release_build: &release_build |
     ### Build release
-    ./gitian-build.py -o $RELEASE_TYPE --docker --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
+    ./gitian-build.py -o $RELEASE_TYPE --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
 
     ### Sign Windows
     
