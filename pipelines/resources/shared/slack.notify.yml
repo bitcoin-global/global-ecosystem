@@ -1,0 +1,13 @@
+---
+resource_types:
+- name: slack-alert
+  type: docker-image
+  source:
+    repository: arbourd/concourse-slack-alert-resource
+
+resources:
+- name: notify
+  type: slack-alert
+  icon: slack
+  source:
+    url: ((slack.webhook))

@@ -8,26 +8,78 @@ meta:
     gcloud compute config-ssh -q
 
   configure_git: &configure_git |
+    export GITHUB_TOKEN=${GITHUB_TOKEN}
     git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
+    git config --global user.name  "bitcoin-global-bot"
+    git config --global user.email "bot@bitcoin-global.io"
 
-  get_version: &get_version |
+  get_btg_version: &get_btg_version |
     TEMP_TAG=$(grep -e "$(cat ./bitcoin-global/.git/HEAD)" ./bitcoin-global/.git/packed-refs | head -n1 | cut -d ' ' -f 2)
     export GITHUB_TAG=${TEMP_TAG##*/}
 
-  release_prepare: &release_prepare |
-    echo "Setup release build configuration"
-    git clone https://github.com/bitcoin-global/bitcoin-global.git
-    cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
+  import_gpg: &import_gpg |
+    ### Import and unlock GPG key
+    echo "TEMP" > ~/temp.txt
+    mkdir -p ~/.gpg
+    echo "${RELEASE_CERT}" > ~/.gpg/cert.pem
+    echo "${RELEASE_KEY}" > ~/.gpg/cert_key.pem
+    echo "${GPG_PUBLIC}" | base64 -d > ~/.gpg/public.key
+    echo "${GPG_PRIVATE}" | base64 -d > ~/.gpg/private.key
+    echo "${GPG_SUBKEY}" | base64 -d > ~/.gpg/sub.key
+    gpg --import ~/.gpg/public.key
+    gpg --import ~/.gpg/private.key
+    gpg --import ~/.gpg/sub.key
+    rm -rf ~/temp*
+
+  prepare_builder_vm: &prepare_builder_vm |
+    echo "Prepare machine"
+    apt-get update
+    apt-get install -y \
+      gnupg2 ca-certificates git software-properties-common \
+      python3.6 sudo nano apt-cacher-ng ruby make wget curl \
+      python-vm-builder qemu-kvm qemu-utils
+    service apt-cacher-ng start
+
+  gitian_dependencies: &gitian_dependencies |
+    mkdir -p ./gitian-builder/inputs
+    curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
+      --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
+
+  release_setup: &release_setup |
+    echo "Setup release build configuration for $GITHUB_TAG"
+    
+    ### Configure Bitcoin Global builder
+    git clone -b $GITHUB_TAG https://github.com/bitcoin-global/bitcoin-global.git ./tmp-bitcoin-global
+    cp ./tmp-bitcoin-global/contrib/gitian-build.py ./gitian-build.py
     chmod u+x ./gitian-build.py
-    ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
+    rm -rf ./tmp-bitcoin-global
+    
+    ### Configure detached repo
+    git clone https://github.com/bitcoin-global/bitcoin-detached-sigs.git
+    cd ./bitcoin-detached-sigs
+    branch_exists=`git show-ref refs/heads/$GITHUB_TAG`
+    if [ ! -n "$branch_exists" ]; then
+      git checkout --orphan $GITHUB_TAG
+      git rm -rf .
+      git commit --allow-empty -m "ci: Prepare for $GITHUB_TAG release"
+      git push origin $GITHUB_TAG
+    fi
+    cd ..
+    rm -rf ./bitcoin-detached-sigs
+
+    ### Run release setup
+    ./gitian-build.py --commit --setup --docker fhivemind $GITHUB_TAG
 
   release_build: &release_build |
-    ./gitian-build.py --detach-sign --no-commit -o $RELEASE_TYPE --commit -j16 -m15000 -B fhivemind $GITHUB_TAG
+    ### Build release
+    ./gitian-build.py -o $RELEASE_TYPE --docker --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
 
+    ### Sign Windows
+    
   make_builder: &make_builder |
-    # Deploy Builder VM on GCP
-    bitcoin-infra/scripts/add-vm.sh \
+    ### Deploy Builder VM on GCP
+    global-ecosystem/scripts/add-vm.sh \
       --name="$BUILDER_VM_NAME" \
       --zone="$BUILDER_VM_ZONE" \
       --size="$BUILDER_VM_SIZE" \
@@ -46,37 +98,51 @@ meta:
         sleep 1
     done
     echo "Success!"
-    
-  builder_setup: &builder_setup
+
+  setup_builder: &setup_builder
     - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
-    - |
-      #! /bin/bash
-      echo "Env config"
-      export GITHUB_TAG=${GITHUB_TAG}
-      export GITHUB_TOKEN=${GITHUB_TOKEN}
-    - |
-      echo "Prepare machine"
-      apt-get update
-      apt-get install git software-properties-common python3.6 sudo nano apt-cacher-ng ruby make wget curl python-vm-builder qemu-kvm qemu-utils -y
-      service apt-cacher-ng start
+    - (( grab meta.prepare_builder_vm ))
     - (( grab meta.configure_git ))
-    - (( grab meta.release_prepare ))
+    - (( grab meta.import_gpg ))
+    - (( grab meta.release_setup ))
+    - (( grab meta.gitian_dependencies ))
     - shutdown --reboot 0 && exit
     - EOF
 
-  builder_run: &builder_run
+  builder_release: &builder_release
+    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_git ))
+    - (( grab meta.import_gpg ))
+    - (( grab meta.release_build ))
+    - exit
+    - EOF
+
+  builder_stop: &builder_stop |
+    global-ecosystem/scripts/remove-vm.sh \
+      --name="$BUILDER_VM_NAME" \
+      --zone="$BUILDER_VM_ZONE"
+
+  builder_destroy: &builder_destroy |
+    global-ecosystem/scripts/remove-vm.sh \
+      --name="$BUILDER_VM_NAME" \
+      --zone="$BUILDER_VM_ZONE"
+      # We won't destroy it for now, just shutdown
+      # --destroy
+
+  builder_publish: &builder_publish
     - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
     - |
-      echo "Release config..."
-      export RELEASE_TYPE=${RELEASE_TYPE}
-      export GITHUB_TAG=${GITHUB_TAG}
-      export GITHUB_TOKEN=${GITHUB_TOKEN}
+      export GHR_VERSION=0.13.0
+      export GHR_URL=https://github.com/tcnksm/ghr/releases/download/v${GHR_VERSION}/ghr_v${GHR_VERSION}_linux_amd64.tar.gz
     - |
-      echo "Downloading dependencies..."
+      apt-get install gnupg -y
+      wget "$GHR_URL"
+      tar xzf ghr_v${GHR_VERSION}_linux_amd64.tar.gz
+      mv ghr_v${GHR_VERSION}_linux_amd64/ghr /usr/bin/ghr
+      rm -r ghr_v${GHR_VERSION}_linux_amd64.tar.gz ghr_v${GHR_VERSION}_linux_amd64/
+      echo -e $GPG_KEY > PRIVATE_GPG_KEY.asc && gpg --batch --import PRIVATE_GPG_KEY.asc
       mkdir -p ./gitian-builder/inputs
       curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
         --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
-    - echo "Building releases..."
-    - (( grab meta.release_build ))
     - exit
     - EOF

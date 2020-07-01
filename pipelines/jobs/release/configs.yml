@@ -4,7 +4,7 @@ meta:
     params:
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
       GCLOUD_CREDENTIALS            : ((gcp.service-account))
-      GCP_PROJECT                   : bitcoin-global-playground
+      GCP_PROJECT                   : bitcoin-global-infra
       GKE_CLUSTER                   : eu-master-cluster
       GKE_CLUSTER_ZONE              : europe-west1-b
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
@@ -12,14 +12,18 @@ meta:
       SSH_PRIVATE_KEY               : ((ssh.private))
       SSH_PUBLIC_KEY                : ((ssh.public))
       SSH_USER                      : ((ssh.username))
-      GPG_KEY                       : ((gpg.private))
-      GPG_PASSPHRASE                : ((gpg.passphrase))
+      GPG_SIGNER                    : ((gpg.signer))
+      GPG_PUBLIC                    : ((gpg.public))
+      GPG_PRIVATE                   : ((gpg.private))
+      GPG_SUBKEY                    : ((gpg.subkey))
+      RELEASE_CERT                  : ((cert.cert))
+      RELEASE_KEY                   : ((cert.key))
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
       # Builder config
       BUILDER_VM_NAME               : master-bitcoin-builder
       BUILDER_VM_ZONE               : us-central1-b
-      BUILDER_VM_SIZE               : n2-highcpu-16
-      BUILDER_DISK_SIZE             : 100GB
-      BUILDER_DISK_TYPE             : pd-ssd
+      BUILDER_VM_SIZE               : n1-highcpu-8
+      BUILDER_DISK_SIZE             : 60GB
+      BUILDER_DISK_TYPE             : pd-standard
       BUILDER_SCRIPT_PATH           : /tmp/builder-startup.sh

@@ -10,9 +10,10 @@ meta_plan:
   provision-vm:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
+    - (( grab meta.get_btg_version ))
     - (( grab meta.make_builder ))
     - (( grab meta.wait_for_builder ))
-    - (( join "\n" meta.builder_setup ))
+    - (( join "\n" meta.setup_builder ))
 
 ### Pipeline config
 jobs:
@@ -22,7 +23,7 @@ jobs:
   plan:
 
   - in_parallel:
-    - get: bitcoin-infra
+    - get: global-ecosystem
     - get: bitcoin-global
       trigger: true
     - get: builder
@@ -32,7 +33,7 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: bitcoin-infra
+        - name: global-ecosystem
         - name: bitcoin-global
       run:
         user: root
@@ -40,3 +41,5 @@ jobs:
         args:
           - -exc
           - (( join "\n" meta_plan.provision-vm ))
+
+  <: ((inject slack-notify))

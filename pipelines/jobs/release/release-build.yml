@@ -20,17 +20,13 @@ meta_plan:
   build-release:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
+    - (( grab meta.get_btg_version ))
     - (( grab meta.wait_for_builder ))
-    - (( grab meta.get_version ))
-    - (( join "\n" meta.builder_run ))
+    - (( join "\n" meta.builder_release ))
 
   shutdown-vm:
     - (( grab meta.configure_gcloud ))
-    - |
-      # Power Off Builder VM on GCP
-      bitcoin-infra/scripts/remove-vm.sh \
-        --name="$BUILDER_VM_NAME" \
-        --zone="$BUILDER_VM_ZONE"
+    - (( grab meta.builder_stop ))
 
 ### Pipeline config
 jobs:
@@ -44,7 +40,7 @@ jobs:
       trigger: true
     - get: builder
       passed: [provision-build-vm]
-    - get: bitcoin-infra
+    - get: global-ecosystem
       passed: [provision-build-vm]
 
   - task: Boot Build VM
@@ -52,7 +48,7 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: bitcoin-global
+        - name: global-ecosystem
       run:
         user: root
         path: bash
@@ -72,6 +68,19 @@ jobs:
         args:
           - -exc
           - (( join "\n" meta_plan.build-release ))
+
+ # - task: Publish releases
+ #   <<: *release-config
+ #   config:
+ #     platform: linux
+ #     inputs:
+ #       - name: bitcoin-global
+ #     run:
+ #       user: root
+ #       path: bash
+ #       args:
+ #         - -exc
+ #         - (( join "\n" meta_plan.publish-release ))
   
   # Whatever happens, make sure we have switched off the VM for cost reduction
   ensure: &shudown
@@ -80,11 +89,12 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: builder
-        - name: bitcoin-infra
+        - name: global-ecosystem
       run:
         user: root
         path: bash
         args:
           - -exc
           - (( join "\n" meta_plan.shutdown-vm ))
+
+  <: ((inject slack-notify))

@@ -1,10 +1,10 @@
 ---
 resources:
-- name: bitcoin-infra
+- name: global-ecosystem
   type: git
   icon: github
   source:
-    uri: (( grab meta.bitcoin-infra-repository ))
+    uri: (( grab meta.global-ecosystem-repository ))
     username: ((git.username))
     password: ((git.password))
     branch: master

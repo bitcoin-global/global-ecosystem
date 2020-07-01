@@ -29,6 +29,8 @@ case $i in
     shift ;;
     --disk-type=*)         DISK_TYPE="${i#*=}"
     shift ;;
+    --preemptible)         VM_PREEMPTIBLE="--preemptible"
+    ;;
     *) error "Unknown parameter passed: $i"; exit 1 ;;
 esac
 done
@@ -40,6 +42,7 @@ kill_if_empty "--zone" $VM_ZONE
 VM_SIZE=${VM_SIZE:-g1-small}
 DISK_SIZE=${DISK_SIZE:-10GB}
 DISK_TYPE=${DISK_TYPE:-pd-standard}
+VM_PREEMPTIBLE=${VM_PREEMPTIBLE:-}
 
 if [ -z $VM_SCRIPT ]; 
 then
@@ -70,7 +73,7 @@ if [ -z "$VM_INSTANCE" ]; then
         $VM_SCRIPT_TAG \
         --no-restart-on-failure \
         --maintenance-policy=TERMINATE \
-        --preemptible \
+        $VM_PREEMPTIBLE \
         --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
         --image=ubuntu-1804-bionic-v20200610 \
         --image-project=ubuntu-os-cloud \

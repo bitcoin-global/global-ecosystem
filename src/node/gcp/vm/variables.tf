@@ -6,7 +6,7 @@ variable "prefix" {
 
 variable "project" {
   type    = string
-  default = "bitcoin-global-playground"
+  default = "bitcoin-global-infra"
 }
 
 variable "region" {
@@ -27,7 +27,7 @@ variable "type" {
 
 variable "image" {
   type    = string
-  default = "eu.gcr.io/bitcoin-global-playground/bit-global-node:bootstrap"
+  default = "eu.gcr.io/bitcoin-global-infra/bit-global-node:bootstrap"
 }
 
 variable "mount_path" {

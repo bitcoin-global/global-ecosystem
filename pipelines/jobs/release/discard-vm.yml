@@ -9,13 +9,7 @@ meta_plan:
 
   discard-vm:
     - (( grab meta.configure_gcloud ))
-    - |
-      # Destroy Builder VM
-      bitcoin-infra/scripts/remove-vm.sh \
-        --name="$BUILDER_VM_NAME" \
-        --zone="$BUILDER_VM_ZONE"
-        # We won't destroy it for now, just shutdown
-        # --destroy
+    - (( grab meta.builder_destroy ))
 
 ### Pipeline config
 jobs:
@@ -29,7 +23,7 @@ jobs:
       trigger: true
     - get: builder
       passed: [build-releases]
-    - get: bitcoin-infra
+    - get: global-ecosystem
       passed: [build-releases]
 
   - task: Discard VM
@@ -37,11 +31,12 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: builder
-        - name: bitcoin-infra
+        - name: global-ecosystem
       run:
         user: root
         path: bash
         args:
           - -exc
           - (( join "\n" meta_plan.discard-vm ))
+
+  <: ((inject slack-notify))

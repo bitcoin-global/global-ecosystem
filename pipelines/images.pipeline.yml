@@ -4,11 +4,15 @@ spruce:
   merge:
   - with_all_in: consts/
     regexp: ".*.(yml)"
+  - with_all_in: jobs/shared/
+    regexp: ".*.(yml)"
+  - with_all_in: resources/shared/
+    regexp: ".*.(yml)"
   - with:
       files:
       - groups/docker-images.yml
       - resources/docker.builder.yml
-      - resources/git.bitcoin-infra.yml
+      - resources/git.global-ecosystem.yml
   - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
   to: ignore.builder.pipeline.yml

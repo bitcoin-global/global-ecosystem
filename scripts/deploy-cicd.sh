@@ -6,7 +6,6 @@
 #
 # This is the deployment script for required CI/CD infrastructure for shared
 # projects. 
-# Reference: https://github.com/EngineerBetter/control-tower
 #
 ###############################################################################
 set -eo pipefail
@@ -43,11 +42,11 @@ printf "%s" "$(openssl rand -base64 24)" > encryption-key
 printf "%s" "$(openssl rand -base64 24)" > web-encryption-key
 printf "%s:%s" "admin" "$(openssl rand -base64 24)" > local-users
 
-echo $CONCOURSE_GITHUB_CLIENT_ID > github-client-id
-echo $CONCOURSE_GITHUB_CLIENT_SECRET > github-client-secret
+echo -n "$CONCOURSE_GITHUB_CLIENT_ID" > github-client-id
+echo -n "$CONCOURSE_GITHUB_CLIENT_SECRET" > github-client-secret
 
-echo "admin" > postgresql-user
-echo "$(openssl rand -base64 24)" > postgresql-password
+echo -n "admin" > postgresql-user
+echo -n "$(openssl rand -base64 24)" > postgresql-password
 cat <<EOF > $OVERRIDES_FILE
 postgresql:
   postgresqlUsername: $(cat postgresql-user)
@@ -84,7 +83,7 @@ cd ..
 info "Configuring Google dependencies and Kubernetes secrets..."
 
 # ===================== Ensure logged in to GCP
-${SCRIPT_ROOT}/login.sh
+# ${SCRIPT_ROOT}/login.sh
 
 # ===================== Configuring GCP DNS configs
 ${SCRIPT_ROOT}/setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
@@ -132,4 +131,4 @@ do
     kubectl create secret generic $secret_name -n $ARTIFACT_NAME-main --from-file="$filename/" \
       --dry-run=client -o yaml | kubectl apply -f -
   fi
-done 
+done

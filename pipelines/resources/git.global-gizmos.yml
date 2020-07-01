@@ -1,10 +1,10 @@
 ---
 resources:
-- name: bitcoin-tools
+- name: global-gizmos
   type: git
   icon: github
   source:
-    uri: (( grab meta.bitcoin-tools-repository ))
+    uri: (( grab meta.global-gizmos-repository ))
     username: ((git.username))
     password: ((git.password))
     branch: master

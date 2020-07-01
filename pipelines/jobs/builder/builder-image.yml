@@ -3,8 +3,9 @@ jobs:
 - name: make-builder
   serial: true
   plan:
-  - get: bitcoin-infra
+  - get: global-ecosystem
   - put: builder
     params:
-      build: bitcoin-infra/src/builder
-      additional_tags: bitcoin-infra/src/builder/version
+      build: global-ecosystem/src/builder
+      additional_tags: global-ecosystem/src/builder/version
+  <: ((inject slack-notify))
