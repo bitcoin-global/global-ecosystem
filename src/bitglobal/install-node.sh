@@ -540,7 +540,6 @@ listen=1
 maxconnections=64
 upnp=1
 
-bind=0.0.0.0
 port=$PORT
 
 dbcache=64
@@ -552,10 +551,24 @@ disablewallet=1
 datadir=$DATA_DIR
 
 rpcallowip=127.0.0.1
-rpcbind=127.0.0.1
-rpcport=8332
-rpcuser=USER
+rpcuser=admin
 rpcpassword=$(openssl rand -base64 32)
+
+[main]
+bind=0.0.0.0
+rpcbind=127.0.0.1
+rpcport=18444
+
+[test]
+bind=0.0.0.0
+rpcbind=127.0.0.1
+rpcport=18444
+
+[regtest]
+bind=0.0.0.0
+rpcbind=127.0.0.1
+rpcport=18444
+
 EOF
     chmod go-rw $TARGET_DIR/.bitglobal/bitglob.conf
 
@@ -662,7 +675,7 @@ uninstall_bitcoin_global() {
     fi
 }
 
-while getopts ":v:r:t:d:p:bu" opt
+while getopts ":v:r:t:d:p:b:u" opt
 do
     case "$opt" in
         v)

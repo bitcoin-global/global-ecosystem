@@ -27,5 +27,5 @@ spruce:
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: node-deploy
+  name: deploy-nodes
   config: ignore.nodes.pipeline.yml

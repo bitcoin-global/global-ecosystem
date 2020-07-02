@@ -2,4 +2,4 @@
 groups:
 - name: testnet
   jobs:
-  - deploy-testnet-nodes
+  - deploy-test-nodes
