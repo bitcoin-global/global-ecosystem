@@ -41,21 +41,18 @@
 #
 ###############################################################################
 
-if [ -z "$GITHUB_TOKEN" ]
-then
-    REPO_URL="https://github.com/bitcoin-global/bitcoin-global.git"
-else
-    REPO_URL="https://$GITHUB_USER:$GITHUB_TOKEN@github.com/bitcoin-global/bitcoin-global.git"
-fi
+REPO="bitcoin-global/bitcoin-global"
+REPO_URL="https://github.com/bitcoin-global/bitcoin-global.git"
 
 # See https://github.com/bitcoin-global/bitcoin-global/tags for latest version.
-VERSION=v0.19.1
+VERSION=0.19.1
+RELEASE=$VERSION
 
-TARGET_DIR=$HOME/bitcoin-global
-DATA_DIR=$HOME/.bitglobal
+TARGET_DIR=$HOME/bin
+DATA_DIR=$HOME/bitcoin-global
 PORT=8222
 
-BUILD=1
+BUILD=0
 UNINSTALL=0
 
 BLUE='\033[94m'
@@ -86,13 +83,17 @@ Usage: $0 [-h] [-v <version>] [-t <target_directory>] [-p <port>] [-b] [-u]
     Version of Bitcoin Global to install.
     Default: $VERSION
 
+-r <release>
+    Release of Bitcoin Global to install.
+    Default: $VERSION
+
 -t <target_directory>
     Target directory for source files and binaries.
-    Default: $HOME/bitcoin-global
+    Default: $HOME/bin
 
 -d <data_dir>
     Data directory for blockchain.
-    Default: $HOME/bitglobal
+    Default: $HOME/bitcoin-global
 
 -p <port>
     Bitcoin Global listening port.
@@ -397,32 +398,52 @@ build_bitcoin_global() {
     # fi
 }
 
-# get_bin_url() {
-#     url="https://bitcoin-global.io/bin/bitcoin-global-$VERSION"
-#     case "$SYSTEM" in
-#         Linux)
-#             if program_exists "apk"; then
-#                 echo ""
-#             elif [ "$ARCH" = "armv7l" ]; then
-#                 url="$url/bitcoin-global-$VERSION-arm-linux-gnueabihf.tar.gz"
-#                 echo "$url"
-#             else
-#                 url="$url/bitcoin-global-$VERSION-$ARCH-linux-gnu.tar.gz"
-#                 echo "$url"
-#             fi
-#             ;;
-#         Darwin)
-#             url="$url/bitcoin-global-$VERSION-osx64.tar.gz"
-#             echo "$url"
-#             ;;
-#         FreeBSD)
-#             echo ""
-#             ;;
-#         *)
-#             echo ""
-#             ;;
-#     esac
-# }
+gh_curl() {
+curl -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    $@
+}
+
+get_bin_url() {
+    case "$SYSTEM" in
+        Linux)
+            if program_exists "apk"; then
+                echo ""
+            elif [ "$ARCH" = "armv7l" ]; then
+                file="bitcoin-global-$VERSION-arm-linux-gnueabihf.tar.gz"
+            else
+                file="bitcoin-global-$VERSION-$ARCH-linux-gnu.tar.gz"
+            fi
+            ;;
+        Darwin)
+            file="bitcoin-global-$VERSION-osx64.tar.gz"
+            ;;
+        FreeBSD)
+            ;;
+        *)
+            ;;
+    esac
+    parser=".assets[] | select(.name==\"$file\") | .id"
+    asset_id=$(gh_curl -s https://api.github.com/repos/$REPO/releases/tags/$RELEASE | jq "$parser")
+    
+    if [ -z "$asset_id" ]; then
+        echo ""
+    else
+        echo "https://$GITHUB_TOKEN:@api.github.com/repos/$REPO/releases/assets/$asset_id"
+    fi
+}
+
+download_bin() {
+    print_info "\nDownloading Bitcoin Global binaries.."
+    
+    cd $TARGET_DIR
+    wget -q --auth-no-challenge --header='Accept:application/octet-stream' $1 \
+        -O bitcoin-global-$VERSION.tar.gz
+    
+    mkdir -p bitcoin-global-$VERSION
+    tar xzf bitcoin-global-$VERSION.tar.gz -C bitcoin-global-$VERSION --strip-components=1
+    rm -f bitcoin-global-$VERSION.tar.gz
+}
 
 # download_bin() {
 #     checksum_url="https://bitcoin-global.io/bin/bitcoin-global-$VERSION/SHA256SUMS.asc"
@@ -501,14 +522,14 @@ install_bitcoin_global() {
     if [ -f "$TARGET_DIR/bitcoin-global/src/bitglobd" ]; then
         # Install compiled binaries.
         cp "$TARGET_DIR/bitcoin-global/src/bitglobd" "$TARGET_DIR/bin/" &&
-            cp "$TARGET_DIR/bitcoin-global/src/bitglob-cli" "$TARGET_DIR/bin/" &&
-            print_success "Bitcoin Global $VERSION (compiled) installed successfully!"
+        cp "$TARGET_DIR/bitcoin-global/src/bitglob-cli" "$TARGET_DIR/bin/" &&
+        print_success "Bitcoin Global $VERSION (compiled) installed successfully!"
     elif [ -f "$TARGET_DIR/bitcoin-global-$VERSION/bin/bitglobd" ]; then
         # Install downloaded binaries.
         cp "$TARGET_DIR/bitcoin-global-$VERSION/bin/bitglobd" "$TARGET_DIR/bin/" &&
-            cp "$TARGET_DIR/bitcoin-global-$VERSION/bin/bitglob-cli" "$TARGET_DIR/bin/" &&
-                rm -rf "$TARGET_DIR/bitcoin-global-$VERSION"
-            print_success "Bitcoin Global $VERSION (binaries) installed successfully!"
+        cp "$TARGET_DIR/bitcoin-global-$VERSION/bin/bitglob-cli" "$TARGET_DIR/bin/" &&
+        rm -rf "$TARGET_DIR/bitcoin-global-$VERSION"
+        print_success "Bitcoin Global $VERSION (binaries) installed successfully!"
     else
         print_error "Cannot find files to install."
         exit 1
@@ -519,6 +540,9 @@ listen=1
 maxconnections=64
 upnp=1
 
+bind=0.0.0.0
+port=$PORT
+
 dbcache=64
 par=2
 checkblocks=24
@@ -527,25 +551,11 @@ checklevel=0
 disablewallet=1
 datadir=$DATA_DIR
 
-rpcallowip=0.0.0.0/0
-
-# Options only for mainnet
-[main]
-bind=0.0.0.0
-rpcbind=0.0.0.0
+rpcallowip=127.0.0.1
+rpcbind=127.0.0.1
 rpcport=8332
-
-# Options only for testnet
-[test]
-bind=0.0.0.0
-rpcbind=0.0.0.0
-rpcport=18332
-
-# Options only for regtest
-[regtest]
-bind=0.0.0.0
-rpcbind=0.0.0.0
-rpcport=18444
+rpcuser=USER
+rpcpassword=$(openssl rand -base64 32)
 EOF
     chmod go-rw $TARGET_DIR/.bitglobal/bitglob.conf
 
@@ -566,25 +576,25 @@ EOF
     chmod ugo+x $TARGET_DIR/bin/stop.sh
 }
 
-# start_bitcoin_global() {
-#     if [ ! -f $TARGET_DIR/.bitglobal/bitglobd.pid ]; then
-#         print_info "\nStarting Bitcoin Global.."
-#         cd $TARGET_DIR/bin && ./start.sh
-# 
-#         timer=0
-#         until [ -f $TARGET_DIR/.bitglobal/bitglobd.pid ] || [ $timer -eq 5 ]; do
-#             timer=$((timer + 1))
-#             sleep $timer
-#         done
-# 
-#         if [ -f $TARGET_DIR/.bitglobal/bitglobd.pid ]; then
-#             print_success "Bitcoin Global is running!"
-#         else
-#             print_error "Failed to start Bitcoin Global."
-#             exit 1
-#         fi
-#     fi
-# }
+start_bitcoin_global() {
+    if [ ! -f $TARGET_DIR/.bitglobal/bitglobd.pid ]; then
+        print_info "\nStarting Bitcoin Global.."
+        cd $TARGET_DIR/bin && ./start.sh
+
+        timer=0
+        until [ -f $TARGET_DIR/.bitglobal/bitglobd.pid ] || [ $timer -eq 5 ]; do
+            timer=$((timer + 1))
+            sleep $timer
+        done
+
+        if [ -f $TARGET_DIR/.bitglobal/bitglobd.pid ]; then
+            print_success "Bitcoin Global is running!"
+        else
+            print_error "Failed to start Bitcoin Global."
+            exit 1
+        fi
+    fi
+}
 
 stop_bitcoin_global() {
     if [ -f $TARGET_DIR/.bitglobal/bitglobd.pid ]; then
@@ -614,12 +624,12 @@ check_bitcoin_global() {
             $TARGET_DIR/bin/bitglob-cli -conf=$TARGET_DIR/.bitglobal/bitglob.conf -datadir=$TARGET_DIR/.bitglobal getnetworkinfo
         fi
 
-        reachable=$(curl -I https://bitnodes.io/api/v1/nodes/me-$PORT/ 2> /dev/null | head -n 1 | cut -d ' ' -f2)
-        if [ $reachable -eq 200 ]; then
-            print_success "Bitcoin Global is accepting incoming connections at port $PORT!"
-        else
-            print_warning "Bitcoin Global is not accepting incoming connections at port $PORT. You may need to configure port forwarding (https://bitcoin-global.io/full-node#port-forwarding) on your router."
-        fi
+        # reachable=$(curl -I https://bitnodes.io/api/v1/nodes/me-$PORT/ 2> /dev/null | head -n 1 | cut -d ' ' -f2)
+        # if [ $reachable -eq 200 ]; then
+        #     print_success "Bitcoin Global is accepting incoming connections at port $PORT!"
+        # else
+        #     print_warning "Bitcoin Global is not accepting incoming connections at port $PORT. You may need to configure port forwarding (https://bitcoin-global.io/full-node#port-forwarding) on your router."
+        # fi
     fi
 }
 
@@ -652,11 +662,14 @@ uninstall_bitcoin_global() {
     fi
 }
 
-while getopts ":v:t:d:p:bu" opt
+while getopts ":v:r:t:d:p:bu" opt
 do
     case "$opt" in
         v)
             VERSION=${OPTARG}
+            ;;
+        r)
+            RELEASE=${OPTARG}
             ;;
         t)
             TARGET_DIR=${OPTARG}
@@ -668,7 +681,7 @@ do
             PORT=${OPTARG}
             ;;
         b)
-            BUILD=1
+            BUILD=0
             ;;
         u)
             UNINSTALL=1
@@ -716,37 +729,31 @@ if [ $UNINSTALL -eq 1 ]; then
     fi
 else
     echo "$WELCOME_TEXT"
-    # --- Steps below are not needed, as we will currently
-    # --- build from target.
-    # if [ "$BUILD" -eq 0 ]; then
-    #     bin_url=$(get_bin_url)
-    # else
-    #     bin_url=""
-    # fi
     
+    # Should build or download?
+    if [ "$BUILD" -eq 0 ]; then
+        bin_url=$(get_bin_url)
+    else
+        bin_url=""
+    fi
+
     # Required presteps.
     stop_bitcoin_global
     create_target_dir
     create_data_dir
 
-    # --- Steps below are not needed, as we will currently
-    # --- build from target.
-    # if [ "$bin_url" != "" ]; then
-    #     download_bin "$bin_url"
-    # else
-    #     install_build_dependencies && build_bitcoin_global
-    # fi
+    # Build or download
+    if [ "$bin_url" != "" ]; then
+        download_bin "$bin_url"
+    else
+        install_build_dependencies && build_bitcoin_global
+    fi
 
     # Download and install client.
-    install_build_dependencies
-    build_bitcoin_global
     install_bitcoin_global
-    
-    # --- Steps below are not needed, as we will run
-    # --- nodes in cluster env, which will auto start
-    # --- on boot.
     # start_bitcoin_global
     # check_bitcoin_global
+
     print_readme > $TARGET_DIR/README.md
     cat $TARGET_DIR/README.md
     print_success "If this your first install, Bitcoin Global may take several hours to download a full copy of the blockchain."

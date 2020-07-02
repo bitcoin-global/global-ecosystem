@@ -1,0 +1,31 @@
+spruce:
+# Build pipeline file
+- base: base.yml
+  merge:
+  - with_all_in: consts/
+    regexp: ".*.(yml)"
+  - with_all_in: jobs/shared/
+    regexp: ".*.(yml)"
+  - with_all_in: resources/shared/
+    regexp: ".*.(yml)"
+  - with:
+      files:
+      - groups/nodes.yml
+      - resources/git.global-ecosystem.yml
+      - resources/docker.builder.yml
+  - with_all_in: jobs/nodes/
+    regexp: ".*.(yml)"
+  to: ignore.nodes.pipeline.yml
+
+# Clean pipeline file
+- base:  ignore.nodes.pipeline.yml
+  prune:
+  - meta
+  - meta_plan
+  to: ignore.nodes.pipeline.yml
+
+# Deploy pipeline file
+fly:
+  target: bitglob
+  name: node-deploy
+  config: ignore.nodes.pipeline.yml

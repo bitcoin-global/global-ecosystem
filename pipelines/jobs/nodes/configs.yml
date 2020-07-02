@@ -1,0 +1,22 @@
+---
+meta:
+  release-params: &release-params
+    params:
+      SERVICE_ACCOUNT               : ((gcp.service-account-email))
+      GCLOUD_CREDENTIALS            : ((gcp.service-account))
+      GCP_PROJECT                   : bitcoin-global-infra
+      GKE_CLUSTER                   : eu-master-cluster
+      GKE_CLUSTER_ZONE              : europe-west1-b
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
+      GITHUB_TOKEN                  : ((git.token))
+      TERM                          : xterm-256color
+      # Monitoring
+      NETDATA_INFRA_ROOM            : a9c21a87-65f9-4bd8-86b0-e9de831a597a
+      NETDATA_INFRA_TOKEN           : ((monitoring.infra-token))
+      # Builder config
+      NODE_NAME                     : eu-bitcoin-global-node-testnet
+      NODE_ZONE                     : europe-west1-b
+      NODE_SIZE                     : n1-standard-1
+      NODE_DISK_SIZE                : 300GB
+      NODE_DISK_TYPE                : pd-standard
+      NODE_SCRIPT_PATH              : /tmp/node-startup.sh
