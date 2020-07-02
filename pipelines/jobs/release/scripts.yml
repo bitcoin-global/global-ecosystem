@@ -37,8 +37,13 @@ meta:
     apt-get update
     apt-get install -y \
       gnupg2 ca-certificates git software-properties-common \
-      python3.6 sudo nano apt-cacher-ng ruby make wget curl
+      python3.6 sudo nano apt-cacher-ng ruby make wget curl pigz \
+      build-essential autoconf libssl1.0-dev
     service apt-cacher-ng restart
+
+    ### Install monitoring
+    bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
   gitian_dependencies: &gitian_dependencies |
     mkdir -p ./gitian-builder/inputs
@@ -116,6 +121,14 @@ meta:
     - exit
     - EOF
 
+  builder_publish: &builder_publish
+    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_git ))
+    - (( grab meta.import_gpg ))
+    - (( grab meta.publish_stuff ))
+    - exit
+    - EOF
+
   builder_stop: &builder_stop |
     global-ecosystem/scripts/remove-vm.sh \
       --name="$BUILDER_VM_NAME" \
@@ -128,20 +141,72 @@ meta:
       # We won't destroy it for now, just shutdown
       # --destroy
 
-  builder_publish: &builder_publish
-    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT << EOF
-    - |
+  publish_stuff: &publish_stuff |
+      ### Install OSSLSIGNCODE & GHR
       export GHR_VERSION=0.13.0
       export GHR_URL=https://github.com/tcnksm/ghr/releases/download/v${GHR_VERSION}/ghr_v${GHR_VERSION}_linux_amd64.tar.gz
-    - |
-      apt-get install gnupg -y
-      wget "$GHR_URL"
-      tar xzf ghr_v${GHR_VERSION}_linux_amd64.tar.gz
-      mv ghr_v${GHR_VERSION}_linux_amd64/ghr /usr/bin/ghr
+
+      #- Osslsigncode
+      mkdir ~/tmp-tools
+      cp ./gitian-builder/inputs/osslsigncode-* ~/tmp-tools/ && cd ~/tmp-tools/
+      tar xf osslsigncode-1.7.1.tar.gz
+      cd osslsigncode-1.7.1
+      patch -p1 < ../osslsigncode-Backports-to-1.7.1.patch
+      ./configure --without-gsf --without-curl --disable-dependency-tracking
+      make && make install
+      cd ../
+
+      #- GHR
+      wget "$GHR_URL" && tar xzf ghr_v${GHR_VERSION}_linux_amd64.tar.gz && mv ghr_v${GHR_VERSION}_linux_amd64/ghr /usr/bin/ghr
       rm -r ghr_v${GHR_VERSION}_linux_amd64.tar.gz ghr_v${GHR_VERSION}_linux_amd64/
-      echo -e $GPG_KEY > PRIVATE_GPG_KEY.asc && gpg --batch --import PRIVATE_GPG_KEY.asc
-      mkdir -p ./gitian-builder/inputs
-      curl -L https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.11.sdk.tar.xz \
-        --output ./gitian-builder/inputs/MacOSX10.11.sdk.tar.gz
-    - exit
-    - EOF
+
+      ### Sign Windows
+      osslsigncode sign -certs ~/.gpg/cert.pem -key ~/.gpg/cert_key.pem \
+        -n "Bitcoin Global $GITHUB_TAG" -i http://bitcoin-global.io/ \
+        -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup-unsigned.exe \
+        -out ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup.exe
+      rm -rf ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup-unsigned.exe
+
+      ### Sign OSX
+      mv ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-osx-unsigned.dmg \
+         ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-osx.dmg
+
+      ### Remove `debug` packages
+      rm -rf ~/bitcoin-binaries/$GITHUB_TAG/*debug*
+
+      ### Complete signing
+      cd ~/bitcoin-binaries/$GITHUB_TAG
+      shasum -a 256 bitcoin-global-* > SHA256SUMS
+      gpg2 --pinentry-mode loopback --yes --clearsign --output SHA256SUMS.asc --sign SHA256SUMS
+      rm -rf SHA256SUMS
+
+      ### Generate release report
+      LATEST_TAG=$(git --git-dir ~/bitcoin-global/.git describe --tags --abbrev=0 || echo "05f5dd96c71e8d989c6f04771a3eab9d41f1ea49")
+      RELEASE_DATA=$(git --git-dir ~/bitcoin-global/.git log $FROM_TAG..HEAD --no-merges \
+                  --pretty=format:"* **[\`%h\`](https://github.com/bitcoin-global/bitcoin-global/commit/%H)**  %s" \
+                  -i -E --grep=".*: .*")
+      COMMITTERS=$(git --git-dir ~/bitcoin-global/.git log --format="* %an" $FROM_TAG..HEAD | uniq)
+      DATE=$(date '+%Y-%m-%d')
+
+      echo -e "## Release v${GITHUB_TAG} ($DATE)\n\n" > release.md
+      echo -e "### :globe_with_meridians: Getting started\n" >> release.md
+      echo -e "* [Download Bitcoin Global](https://github.com/bitcoin-global/bitcoin-global/releases/tag/$GITHUB_TAG)" >> release.md
+      echo -e "* [Install Bitcoin Global](https://bitcoin-global.io/getting-started)" >> release.md
+      echo -e "* [Requirements](https://bitcoin-global.io/getting-started#requirements)" >> release.md
+      echo -e "* [Release notes](https://github.com/bitcoin-global/bitcoin-global/tree/master/doc/release-notes)\n\n---\n\n" >> release.md
+      echo -e "### Release notes:\n $RELEASE_DATA\n\n" >> release.md
+      echo -e "### Committers:\n $COMMITTERS\n\n---" >> release.md
+      cp release.md ~/tmp-tools/release-short.md
+      echo -e "### Release hashes and signatures\n\n\`\`\`gpg" >> release.md
+      cat ./SHA256SUMS.asc >> release.md
+      echo -e "\`\`\`\n\nSigned by public key \`DC17 1097 7C99 4CF2 DD8A 59DA 9791 24CB 5F7F BF39\` (<fhivemind@users.noreply.github.com>)" >> release.md
+      mv ./release.md ~/tmp-tools/release.md
+
+      ### Publish
+      ghr -t ${GITHUB_TOKEN} -u bitcoin-global -r bitcoin-global -n v$GITHUB_TAG -b "$(cat ~/tmp-tools/release.md)" -delete v$GITHUB_TAG .
+
+      ### Upload release notes
+      cd ~/bitcoin-global
+      git checkout master && git fetch && git pull
+      cp ~/tmp-tools/release-short.md ./doc/release-notes/release-notes-$GITHUB_TAG.md && git add ./doc/release-notes/release-notes-$GITHUB_TAG.md
+      git commit -m "[docs] Adding release notes for $GITHUB_TAG" && git push

@@ -20,6 +20,9 @@ meta:
       RELEASE_KEY                   : ((cert.key))
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
+      # Monitoring
+      NETDATA_INFRA_ROOM            : eac6a6d5-154c-4e40-9fec-d29da19fb962
+      NETDATA_INFRA_TOKEN           : ((monitoring.infra-token))
       # Builder config
       BUILDER_VM_NAME               : master-bitcoin-builder
       BUILDER_VM_ZONE               : us-central1-b

@@ -24,6 +24,13 @@ meta_plan:
     - (( grab meta.wait_for_builder ))
     - (( join "\n" meta.builder_release ))
 
+  publish-release:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.get_btg_version ))
+    - (( grab meta.wait_for_builder ))
+    - (( join "\n" meta.builder_publish ))
+
   shutdown-vm:
     - (( grab meta.configure_gcloud ))
     - (( grab meta.builder_stop ))
@@ -69,19 +76,19 @@ jobs:
           - -exc
           - (( join "\n" meta_plan.build-release ))
 
- # - task: Publish releases
- #   <<: *release-config
- #   config:
- #     platform: linux
- #     inputs:
- #       - name: bitcoin-global
- #     run:
- #       user: root
- #       path: bash
- #       args:
- #         - -exc
- #         - (( join "\n" meta_plan.publish-release ))
-  
+  - task: Publish releases
+    <<: *release-config
+    config:
+      platform: linux
+      inputs:
+        - name: bitcoin-global
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.publish-release ))
+
   # Whatever happens, make sure we have switched off the VM for cost reduction
   ensure: &shudown
     task: Shutdown Build VM
