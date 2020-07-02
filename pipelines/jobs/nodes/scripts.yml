@@ -54,6 +54,7 @@ meta:
     ### Prepare for installataion
     mkdir -p /binaries
     mkdir -p /bitcoin-global
+    rm -rf ./global-ecosystem
     git clone https://github.com/bitcoin-global/global-ecosystem.git
     chmod +x ./global-ecosystem/src/bitglobal/install-node.sh
 
@@ -64,7 +65,7 @@ meta:
 
   run_bitcoin_global: &run_bitcoin_global |
     cd /binaries/bin
-    ./bitglobd -conf=/binaries/.bitglobal/bitglob.conf -testnet -bootstrap
+    ./bitglobd -conf=/binaries/.bitglobal/bitglob.conf -testnet -bootstrap -daemon
 
   setup_node: &setup_node
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
@@ -72,6 +73,7 @@ meta:
     - (( grab meta.configure_git ))
     - (( grab meta.install_bitcoin_global ))
     - (( grab meta.run_bitcoin_global ))
+    - exit
     - EOF
 
   node_stop: &node_stop |

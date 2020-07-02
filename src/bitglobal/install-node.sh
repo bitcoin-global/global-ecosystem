@@ -540,8 +540,6 @@ listen=1
 maxconnections=64
 upnp=1
 
-port=$PORT
-
 dbcache=64
 par=2
 checkblocks=24
@@ -555,16 +553,19 @@ rpcuser=admin
 rpcpassword=$(openssl rand -base64 32)
 
 [main]
+port=$PORT
 bind=0.0.0.0
 rpcbind=127.0.0.1
 rpcport=18444
 
 [test]
+port=$PORT
 bind=0.0.0.0
 rpcbind=127.0.0.1
 rpcport=18444
 
 [regtest]
+port=$PORT
 bind=0.0.0.0
 rpcbind=127.0.0.1
 rpcport=18444
@@ -752,6 +753,7 @@ else
 
     # Required presteps.
     stop_bitcoin_global
+    uninstall_bitcoin_global
     create_target_dir
     create_data_dir
 
