@@ -29,7 +29,11 @@ case $i in
     shift ;;
     --disk-type=*)         DISK_TYPE="${i#*=}"
     shift ;;
+    --tags=*)              TAGS="${i#*=}"
+    shift ;;
     --preemptible)         VM_PREEMPTIBLE="--preemptible"
+    shift ;;
+    --static-ip)           STATIC_IP="true"
     ;;
     *) error "Unknown parameter passed: $i"; exit 1 ;;
 esac
@@ -43,6 +47,7 @@ VM_SIZE=${VM_SIZE:-g1-small}
 DISK_SIZE=${DISK_SIZE:-10GB}
 DISK_TYPE=${DISK_TYPE:-pd-standard}
 VM_PREEMPTIBLE=${VM_PREEMPTIBLE:-}
+ADDITIONAL_ARGS=""
 
 if [ -z $VM_SCRIPT ]; 
 then
@@ -63,12 +68,23 @@ ${SCRIPT_ROOT}/login.sh
 VM_INSTANCE=$(gcloud compute instances list --filter="name:($VM_NAME)" --format yaml)
 
 if [ -z "$VM_INSTANCE" ]; then
+
+    if [ ! -z "$STATIC_IP" ]; then
+        VM_REGION=${VM_ZONE:0:-2}    
+        info "Creating static IP address (region: $VM_REGION)..."
+        gcloud compute addresses create $VM_NAME-address \
+            --network-tier=STANDARD --region=$VM_REGION
+        EXTERNAL_IP=$(gcloud compute addresses describe $VM_NAME-address --region $VM_REGION  --format json | jq '.address' | tr -d '"')
+        ADDITIONAL_ARGS="$ADDITIONAL_ARGS --address=$EXTERNAL_IP"
+    fi
+
     info "Creating VM instance ($VM_NAME) (zone: $VM_ZONE)..."
     gcloud beta compute instances create $VM_NAME \
+        $ADDITIONAL_ARGS \
         --zone=$VM_ZONE \
         --machine-type=$VM_SIZE \
         --subnet=default \
-        --network-tier=PREMIUM \
+        --network-tier=STANDARD \
         --metadata=ssh-keys="${SSH_USER}:${SSH_PUBLIC_KEY}" \
         $VM_SCRIPT_TAG \
         --no-restart-on-failure \
@@ -84,7 +100,7 @@ if [ -z "$VM_INSTANCE" ]; then
         --shielded-vtpm \
         --shielded-integrity-monitoring \
         --reservation-affinity=any \
-        --tags automated-script
+        --tags=${TAGS:-automated-script}
 else
     warn "VM instance ($VM_NAME) (zone: $VM_ZONE) already exists, powering on..."
     gcloud compute instances start $VM_NAME --zone=$VM_ZONE

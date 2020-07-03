@@ -1,5 +1,0 @@
----
-groups:
-- name: testnet
-  jobs:
-  - deploy-test-nodes

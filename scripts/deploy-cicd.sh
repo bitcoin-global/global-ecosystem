@@ -83,7 +83,7 @@ cd ..
 info "Configuring Google dependencies and Kubernetes secrets..."
 
 # ===================== Ensure logged in to GCP
-# ${SCRIPT_ROOT}/login.sh
+${SCRIPT_ROOT}/login.sh --gke
 
 # ===================== Configuring GCP DNS configs
 ${SCRIPT_ROOT}/setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"

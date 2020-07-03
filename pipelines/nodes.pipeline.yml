@@ -1,3 +1,9 @@
+# Run sparcing
+exec:
+- executable: ruby
+  args:
+  - jobs/nodes/node_config.rb
+
 spruce:
 # Build pipeline file
 - base: base.yml
@@ -10,11 +16,10 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
-      - groups/nodes.yml
       - resources/git.global-ecosystem.yml
       - resources/docker.builder.yml
   - with_all_in: jobs/nodes/
-    regexp: ".*.(yml)"
+    regexp: ".*.yml"
   to: ignore.nodes.pipeline.yml
 
 # Clean pipeline file

@@ -34,8 +34,9 @@ meta:
       --zone="$NODE_ZONE" \
       --size="$NODE_SIZE" \
       --disk-size="$NODE_DISK_SIZE" \
-      --disk-type="$NODE_DISK_TYPE"
-      # --preemptible
+      --disk-type="$NODE_DISK_TYPE" \
+      --tags="bitcoin-global,bitcoin-$NODE_TYPE" \
+      --static-ip
 
   wait_for_node: &wait_for_node |
     echo "Waiting until VM operational..."
@@ -65,7 +66,7 @@ meta:
 
   run_bitcoin_global: &run_bitcoin_global |
     cd /binaries/bin
-    ./bitglobd -conf=/binaries/.bitglobal/bitglob.conf -testnet -bootstrap -daemon
+    ./bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
 
   setup_node: &setup_node
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF

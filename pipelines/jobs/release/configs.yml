@@ -5,8 +5,6 @@ meta:
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
       GCLOUD_CREDENTIALS            : ((gcp.service-account))
       GCP_PROJECT                   : bitcoin-global-infra
-      GKE_CLUSTER                   : eu-master-cluster
-      GKE_CLUSTER_ZONE              : europe-west1-b
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       GITHUB_TOKEN                  : ((git.token))
       SSH_PRIVATE_KEY               : ((ssh.private))

@@ -1,0 +1,64 @@
+### Resource overrides
+meta_plan:
+  shared-config: &shared-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    <: (( inject meta.config-params ))
+
+  deploy-node:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.make_node ))
+    - (( grab meta.wait_for_node ))
+    - (( join "\n" meta.setup_node ))
+
+### Pipeline config
+jobs:
+<% nodes.each do |environment| %>
+<% environment.node_locations.each do |node| %>
+- name: <%= node %>-<%= environment.type %>
+  build_logs_to_retain: 3
+  <: ((inject slack-notify))
+  plan:
+
+  - in_parallel:
+    - get: global-ecosystem
+    - get: builder
+
+  - task: "Provision node [<%= environment.type %>-<%= node %>]"
+    <<: *shared-config
+    config:
+      platform: linux
+      params: 
+        # Node config
+        NODE_NAME                     : <%= node %>-<%= environment.type %>-global-node
+        NODE_ZONE                     : <%= node %>
+        NODE_TYPE                     : <%= environment.type %>-net
+        NODE_SIZE                     : <%= environment.machine_type %>
+        NODE_DISK_SIZE                : <%= environment.hdd_size %>
+        NODE_DISK_TYPE                : pd-standard
+        BITCOIN_ENTRYPOINT            : <%= environment.command %>
+        # Monitoring
+        NETDATA_INFRA_ROOM            : <%= environment.netdata_room %>
+        NETDATA_INFRA_TOKEN           : ((monitoring.infra-token))
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.deploy-node ))
+<% end %>
+<% end %>
+
+### Group configs
+groups:
+<% nodes.each do |environment| %>
+- name: <%= environment.type %>-net
+  jobs:
+  <% environment.node_locations.each do |node| %>
+  - <%= node %>-<%= environment.type %>
+  <% end %>
+<% end %>
