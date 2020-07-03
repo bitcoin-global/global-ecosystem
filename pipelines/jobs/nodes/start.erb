@@ -1,0 +1,134 @@
+### Resource overrides
+meta_plan:
+  shared-config: &shared-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    <: (( inject meta.config-params ))
+
+  deploy-node:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.make_node ))
+    - (( grab meta.wait_for_node ))
+    - (( join "\n" meta.setup_node ))
+
+  trigger-node:
+  - (( grab meta.configure_git ))
+
+  update-nodelist:
+    - (( grab meta.configure_git ))
+
+### Pipeline config
+jobs:
+<% nodes.each do |environment| %>
+- name: start-<%= environment.type %>
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: global-ecosystem
+    - get: builder
+
+  - task: "Trigger <%= environment.type %> deployment"
+    <<: *shared-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      params: 
+        TRIGGER_NET: <%= environment.type %>
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.trigger-node ))
+    
+  - put: global-ecosystem
+    params: {repository: trigger}
+
+<% environment.node_locations.each do |node| %>
+- name: <%= node %>-<%= environment.type %>
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+
+  - in_parallel:
+    - get: global-ecosystem
+      trigger: true
+      passed: [start-<%= environment.type %>]
+    - get: builder
+
+  - task: "start node [<%= environment.type %>-<%= node %>]"
+    <<: *shared-config
+    config:
+      platform: linux
+      params: 
+        # Node config
+        NODE_NAME                     : <%= node %>-<%= environment.type %>-global-node
+        NODE_ZONE                     : <%= node %>
+        NODE_TYPE                     : <%= environment.type %>
+        NODE_SIZE                     : <%= environment.machine_type %>
+        NODE_DISK_SIZE                : <%= environment.hdd_size %>
+        NODE_DISK_TYPE                : pd-standard
+        BITCOIN_ENTRYPOINT            : <%= environment.command %>
+        # Monitoring
+        NETDATA_INFRA_ROOM            : <%= environment.netdata_room %>
+        NETDATA_INFRA_TOKEN           : ((monitoring.infra-token))
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.deploy-node ))
+<% end %>
+
+- name: update-<%= environment.type %>-nodelist-start
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: global-ecosystem
+      trigger: true
+      passed:
+      <% environment.node_locations.each do |node| %>
+      - <%= node %>-<%= environment.type %>
+      <% end %>
+    - get: builder
+
+  - task: "Update <%= environment.type %> node list"
+    <<: *shared-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      params: 
+        NODE_LIST: <%= environment.type %>
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.update-nodelist ))
+    
+  - put: global-ecosystem
+    params: {repository: node-data}
+
+    <: ((inject slack-notify))
+
+<% end %>
+
+### Group configs
+groups:
+<% nodes.each do |environment| %>
+- name: start-<%= environment.type %>
+  jobs:
+  - start-<%= environment.type %>
+  <% environment.node_locations.each do |node| %>
+  - <%= node %>-<%= environment.type %>
+  <% end %>
+  - update-<%= environment.type %>-nodelist-start
+<% end %>
