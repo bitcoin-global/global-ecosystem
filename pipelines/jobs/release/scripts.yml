@@ -108,8 +108,7 @@ meta:
 
   release_build: &release_build |
     ### Build releases
-    # ./gitian-build.py -o $RELEASE_TYPE --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
-    echo "Works"
+    ./gitian-build.py -o $RELEASE_TYPE --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
     
   make_builder: &make_builder |
     ### Deploy Builder VM on GCP
@@ -173,9 +172,6 @@ meta:
       # --destroy
 
   publish_releases: &publish_releases |
-      echo "USING SHELL"
-      echo $0
-
       ############################################################################################
       ### Sign Windows
       tar xf ~/gitian-builder/inputs/bitcoin-global-$GITHUB_TAG-win-unsigned.tar.gz \
