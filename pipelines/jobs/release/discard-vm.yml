@@ -13,18 +13,18 @@ meta_plan:
 
 ### Pipeline config
 jobs:
-- name: deprovision-build-vm
+- name: destroy-builder
   build_logs_to_retain: 3
   serial: true
   plan:
   - in_parallel:
     - get: bitcoin-global
-      passed: [build-releases]
+      passed: [publish]
       trigger: true
     - get: builder
-      passed: [build-releases]
+      passed: [publish]
     - get: global-ecosystem
-      passed: [build-releases]
+      passed: [publish]
 
   - task: Discard VM
     <<: *discard-config

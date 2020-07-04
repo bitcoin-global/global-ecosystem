@@ -10,7 +10,6 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
-      - groups/docker-images.yml
       - resources/docker.builder.yml
       - resources/git.global-ecosystem.yml
   - with_all_in: jobs/builder/

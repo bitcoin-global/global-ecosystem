@@ -1,0 +1,8 @@
+---
+groups:
+- name: release
+  jobs:
+  - deploy-builder
+  - build
+  - publish
+  - destroy-builder

@@ -1,9 +1,15 @@
 ---
 ### Resource overrides
 meta_plan:
-  release-config: &release-config
+  build-config: &build-config
     image: builder
     timeout: 4h
+    privileged: true
+    <: (( inject meta.release-params ))
+
+  publish-config: &publish-config
+    image: builder
+    timeout: 10m
     privileged: true
     <: (( inject meta.release-params ))
 
@@ -37,18 +43,20 @@ meta_plan:
 
 ### Pipeline config
 jobs:
-- name: build-releases
+
+## Build step
+- name: build
   build_logs_to_retain: 3
   serial: true
   plan:
   - in_parallel:
     - get: bitcoin-global
-      passed: [provision-build-vm]
+      passed: [deploy-builder]
       trigger: true
     - get: builder
-      passed: [provision-build-vm]
+      passed: [deploy-builder]
     - get: global-ecosystem
-      passed: [provision-build-vm]
+      passed: [deploy-builder]
 
   - task: Boot Build VM
     <<: *vm-control-config
@@ -64,7 +72,7 @@ jobs:
           - (( join "\n" meta_plan.boot-vm ))
 
   - task: Build release candidates
-    <<: *release-config
+    <<: *build-config
     config:
       platform: linux
       inputs:
@@ -76,8 +84,53 @@ jobs:
           - -exc
           - (( join "\n" meta_plan.build-release ))
 
+  # Whatever happens, make sure we have switched off the VM for cost reduction
+  ensure: &shudown
+    task: Shutdown Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.shutdown-vm ))
+
+  <: ((inject slack-notify))
+
+
+## Release step
+- name: publish
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: bitcoin-global
+      passed: [build]
+      trigger: true
+    - get: builder
+      passed: [build]
+    - get: global-ecosystem
+      passed: [build]
+
+  - task: Boot Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.boot-vm ))
+
   - task: Publish releases
-    <<: *release-config
+    <<: *publish-config
     config:
       platform: linux
       inputs:

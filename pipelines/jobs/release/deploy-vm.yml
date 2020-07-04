@@ -17,7 +17,7 @@ meta_plan:
 
 ### Pipeline config
 jobs:
-- name: provision-build-vm
+- name: deploy-builder
   build_logs_to_retain: 3
   serial: true
   plan:

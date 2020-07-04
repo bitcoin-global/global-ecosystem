@@ -10,8 +10,7 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
-      - groups/release.yml
-      - resources/releases.bitcoin-global.yml
+      - resources/git.bitcoin-global.yml
       - resources/git.global-ecosystem.yml
       - resources/docker.builder.yml
   - with_all_in: jobs/release/
@@ -28,5 +27,5 @@ spruce:
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: release-github
+  name: release-procedures
   config: ignore.release.pipeline.yml
