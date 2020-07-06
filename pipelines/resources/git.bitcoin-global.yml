@@ -7,4 +7,4 @@ resources:
     uri: (( grab meta.bitcoin-global-repository ))
     username: ((git.username))
     password: ((git.password))
-    branch: (( grab meta.overrides.bitcoin-global.git.branch || "master" ))
+    branch: (( grab meta.overrides.bitcoin-global.branch || "master" ))

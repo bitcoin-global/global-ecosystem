@@ -1,10 +1,5 @@
 ---
 meta:
-  overrides:
-    bitcoin-global:
-      git:
-        branch: "0.19.2"
-
   configure_gcloud: &configure_gcloud |
     ### Configure Google Cloud authentication
     echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
@@ -89,19 +84,6 @@ meta:
     cp ./tmp-bitcoin-global/contrib/gitian-build.py ./gitian-build.py
     chmod u+x ./gitian-build.py
     rm -rf ./tmp-bitcoin-global
-    
-    ### Configure detached repo
-    git clone https://github.com/bitcoin-global/bitcoin-detached-sigs.git
-    cd ./bitcoin-detached-sigs
-    branch_exists=\$(git show-ref refs/heads/$GITHUB_TAG)
-    if [ ! -z "$branch_exists" ]; then
-      git checkout --orphan $GITHUB_TAG
-      git rm -rf .
-      git commit --allow-empty -m "ci: Prepare for $GITHUB_TAG release"
-      git push origin $GITHUB_TAG
-    fi
-    cd ..
-    rm -rf ./bitcoin-detached-sigs
 
     ### Run builder setup
     ./gitian-build.py --commit --setup fhivemind $GITHUB_TAG
@@ -174,7 +156,7 @@ meta:
   publish_releases: &publish_releases |
       ############################################################################################
       ### Sign Windows
-      tar xf ~/gitian-builder/inputs/bitcoin-global-$GITHUB_TAG-win-unsigned.tar.gz \
+      tar xf ~/gitian-builder/inputs/bitcoin-global-$BITGLOBAL_VERSION-win-unsigned.tar.gz \
           -C ~/bitcoin-binaries/$GITHUB_TAG
       mv ~/bitcoin-binaries/$GITHUB_TAG/unsigned/* ~/bitcoin-binaries/$GITHUB_TAG/
       rm -rf ~/bitcoin-binaries/$GITHUB_TAG/unsigned/ \
@@ -183,19 +165,19 @@ meta:
 
       osslsigncode sign -certs ~/.gpg/cert.pem -key ~/.gpg/cert_key.pem \
         -n "Bitcoin Global $GITHUB_TAG" -i http://bitcoin-global.io/ \
-        -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup-unsigned.exe \
-        -out ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup.exe
-      rm -rf ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup-unsigned.exe
+        -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-win64-setup-unsigned.exe \
+        -out ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe
+      rm -rf ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-win64-setup-unsigned.exe
 
       ### Sign OSX
-      # mv ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-osx-unsigned.dmg \
-      #    ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-osx.dmg
+      mv ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-osx-unsigned.dmg \
+         ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-osx.dmg || echo "OSX already present"
 
       ### Add Win to detached sigs
       mkdir -p ~/bitcoin-detached-sigs/win/
       osslsigncode extract-signature -pem \
-        -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$GITHUB_TAG-win64-setup.exe \
-        -out ~/bitcoin-detached-sigs/win/bitcoin-global-$GITHUB_TAG-win64-setup.exe.pem
+        -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe \
+        -out ~/bitcoin-detached-sigs/win/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe.pem
 
       ### Add OSX to detached sigs
       # empty for now...
@@ -203,7 +185,9 @@ meta:
       ### Push detached signatures
       cd ~/bitcoin-detached-sigs
       git add .
-      git commit -m "cd: Add $GITHUB_TAG detached sigs" && git push
+      git checkout -B $GITHUB_TAG
+      git commit -m "cd: Add $GITHUB_TAG detached sigs"
+      git push --set-upstream origin $GITHUB_TAG || git push
 
       ### Push regular signatures
       cd ~/gitian.sigs
@@ -223,7 +207,7 @@ meta:
       LAST_COMMIT=\$(git --git-dir ~/bitcoin-global/.git rev-list --ancestry-path 58ba7c314d552cea8cb024960a8504577aee586f..HEAD | tail -1)
       FROM_COMMIT=\$(git --git-dir ~/bitcoin-global/.git describe --tags --abbrev=0 || echo \$LAST_COMMIT)
       RELEASE_DATA=\$(git --git-dir ~/bitcoin-global/.git log \$FROM_COMMIT..HEAD --no-merges \
-                  --pretty=format:'* **[\`%h\`](https://github.com/bitcoin-global/bitcoin-global/commit/%H)**  %s\n' \
+                  --pretty=format:'* **[\`%h\`](https://github.com/bitcoin-global/bitcoin-global/commit/%H)**  %s' \
                   -i -E --grep=".*: .*")
       COMMITTERS=\$(git --git-dir ~/bitcoin-global/.git log --format="* %an" \$FROM_COMMIT..HEAD | uniq | grep -i -E -v "bitcoin-global-bot" )
       DATE=\$(date '+%Y-%m-%d')
@@ -249,4 +233,5 @@ meta:
       cd ~/bitcoin-global
       git checkout master && git fetch && git pull
       cp ~/tmp-tools/release-short.md ./doc/release-notes/release-notes-$GITHUB_TAG.md && git add ./doc/release-notes/release-notes-$GITHUB_TAG.md
-      git commit -m "[docs] Adding release notes for $GITHUB_TAG" && git push
+      git diff-index --quiet HEAD || git commit -m "[docs] Adding release notes for $GITHUB_TAG"
+      git push
