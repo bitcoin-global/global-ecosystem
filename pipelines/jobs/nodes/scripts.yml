@@ -2,13 +2,19 @@
 meta:
   configure_gcloud: &configure_gcloud |
     ### Configure Google Cloud authentication
-    echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
+    echo "${GCLOUD_CREDENTIALS}" > $GOOGLE_APPLICATION_CREDENTIALS
     gcloud auth activate-service-account \
-      $SERVICE_ACCOUNT --key-file=$GOOGLE_APPLICATION_CREDENTIALS --project=$GCP_PROJECT
+      $SERVICE_ACCOUNT --key-file=${GOOGLE_APPLICATION_CREDENTIALS} --project=$GCP_PROJECT
     mkdir -p /home/gkh/.ssh/
-    gcloud compute config-ssh -q
+
+    ### Dump SSH keys
+    echo "${SSH_PRIVATE_KEY}" > ~/.ssh/google_compute_engine
+    echo "${SSH_PUBLIC_KEY}"  > ~/.ssh/google_compute_engine.pub
+    chmod 400 ~/.ssh/google_compute_engine
+    gcloud beta compute config-ssh -q
 
   configure_git: &configure_git |
+    ### Configure GitHub authentication
     export GITHUB_TOKEN=${GITHUB_TOKEN}
     git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
     git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"

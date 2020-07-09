@@ -7,6 +7,9 @@ meta_plan:
     params:
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
       GCLOUD_CREDENTIALS            : ((gcp.service-account))
+      SSH_PRIVATE_KEY               : ((ssh.private))
+      SSH_PUBLIC_KEY                : ((ssh.public))
+      SSH_USER                      : ((ssh.username))
       GCP_PROJECT                   : bitcoin-global-infra
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       GITHUB_TOKEN                  : ((git.token))
@@ -142,9 +145,6 @@ jobs:
         args:
           - -exc
           - (( join "\n" meta_plan.update-list ))
-    
-  - put: global-ecosystem
-    params: {repository: node-data}
 
     <: ((inject slack-notify))
 

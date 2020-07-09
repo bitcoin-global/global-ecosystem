@@ -1,3 +1,9 @@
+#!/bin/bash
+
+tmppipeline=$(mktemp /tmp/pipeline.XXXXXX)
+tmpfile=$(mktemp /tmp/spruce.XXXXXX)
+
+cat <<EOF > $tmpfile
 spruce:
 # Build pipeline file
 - base: base.yml
@@ -10,22 +16,28 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
-      - resources/git.bitcoin-global.yml
-      - resources/git.global-ecosystem.yml
       - resources/docker.builder.yml
-  - with_all_in: jobs/release/
+      - resources/git.global-ecosystem.yml
+  - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
-  to: ignore.release.pipeline.yml
+  to: $tmppipeline
 
 # Clean pipeline file
-- base:  ignore.release.pipeline.yml
+- base:  $tmppipeline
   prune:
   - meta
   - meta_plan
-  to: ignore.release.pipeline.yml
+  to: $tmppipeline
 
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: release-procedures
-  config: ignore.release.pipeline.yml
+  name: docker-images
+  config: $tmppipeline
+EOF
+
+# Apply file
+aviator -f $tmpfile
+
+# Cleanup
+rm -rf $tmppipeline
