@@ -174,23 +174,23 @@ meta:
          ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-osx.dmg || echo "OSX already present"
 
       ### Add Win to detached sigs
-      mkdir -p ~/bitcoin-detached-sigs/win/
+      mkdir -p ~/global.detached.sigs/win/
       osslsigncode extract-signature -pem \
         -in ~/bitcoin-binaries/$GITHUB_TAG/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe \
-        -out ~/bitcoin-detached-sigs/win/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe.pem
+        -out ~/global.detached.sigs/win/bitcoin-global-$BITGLOBAL_VERSION-win64-setup.exe.pem
 
       ### Add OSX to detached sigs
       # empty for now...
 
       ### Push detached signatures
-      cd ~/bitcoin-detached-sigs
+      cd ~/global.detached.sigs
       git add .
       git checkout -B $GITHUB_TAG
       git commit -m "cd: Add $GITHUB_TAG detached sigs"
       git push --set-upstream origin $GITHUB_TAG || git push
 
       ### Push regular signatures
-      cd ~/gitian.sigs
+      cd ~/global.gitian.sigs
       git push
 
       ### Remove debug packages
