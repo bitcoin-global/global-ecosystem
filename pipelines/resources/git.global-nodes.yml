@@ -1,0 +1,10 @@
+---
+resources:
+- name: global-nodes
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.global-nodes-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: master

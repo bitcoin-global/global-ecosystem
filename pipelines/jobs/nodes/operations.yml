@@ -1,0 +1,113 @@
+---
+meta:
+  # Git and GCloud already configured for each operation
+  perform_deploy: &perform_deploy
+  - (( grab meta.make_node ))
+  - (( grab meta.wait_for_node ))
+  - (( join "\n" meta.install_node ))
+  - (( grab meta.stop_node ))
+
+  perform_destroy: &perform_destroy
+  - (( grab meta.destroy_node ))
+
+  perform_update: &perform_update
+  - (( grab meta.make_node ))     # Ensures its online
+  - (( grab meta.wait_for_node ))
+  - (( join "\n" meta.update_node ))
+  - (( grab meta.stop_node ))
+
+  prepare_node: &prepare_node |
+    ### Install required packages
+    echo "Prepare machine"
+    apt-get update
+    apt-get install -y \
+      gnupg2 ca-certificates git software-properties-common \
+      python3.6 sudo nano ruby wget curl pigz \
+      autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq
+    service apt-cacher-ng restart
+
+    ### Install monitoring
+    echo "Install monitoring"
+    bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+
+    ### Install required tools
+    mkdir -p /binaries
+    mkdir -p /bitcoin-global
+    rm -rf ./global-ecosystem
+    git clone https://github.com/bitcoin-global/global-ecosystem.git
+    chmod +x ./global-ecosystem/src/bitglobal/install-node.sh
+
+  make_node: &make_node |
+    ### Deploy Node VM on GCP
+    global-ecosystem/scripts/add-vm.sh \
+      --name="$NODE_NAME" \
+      --zone="$NODE_ZONE" \
+      --size="$NODE_SIZE" \
+      --disk-size="$NODE_DISK_SIZE" \
+      --disk-type="$NODE_DISK_TYPE" \
+      --tags="bitcoin-global,bitcoin-$NODE_TYPE" \
+      --static-ip
+
+  wait_for_node: &wait_for_node |
+    ### Loop until ready
+    echo "Waiting until VM operational..."
+    counter=0
+    until gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT --command 'echo'; do
+        counter=$((counter+1))
+        if [[ "$counter" -gt 120 ]]; then
+            echo "Timed out!"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Success!"
+
+  install_bitcoin: &install_bitcoin |
+    ### Installing Bitcoin Global
+    # ./global-ecosystem/src/bitglobal/install-node.sh \
+    #  -v 0.19.1 -r bootstrap -p 18222 \
+    #  -t /binaries -d /bitcoin-global
+
+  update_bitcoin: &update_bitcoin |
+    ### Updating Bitcoin Global
+    # ./global-ecosystem/src/bitglobal/install-node.sh \
+    #  -v 0.19.1 -r bootstrap -p 18222 \
+    #  -t /binaries -d /bitcoin-global
+
+  run_bitcoin: &run_bitcoin |
+    ### Run Bitcoin Global
+    echo "Works"
+    # /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
+
+  install_node: &install_node
+    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.prepare_node ))
+    - (( grab meta.configure_git ))
+    - (( grab meta.install_bitcoin ))
+    - (( grab meta.run_bitcoin ))
+    - exit
+    - EOF
+
+  update_node: &update_node
+    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.prepare_node ))
+    - (( grab meta.configure_git ))
+    - (( grab meta.update_bitcoin ))
+    - (( grab meta.run_bitcoin ))
+    - exit
+    - EOF
+
+  stop_node: &stop_node |
+    ### Stop node
+    ./global-ecosystem/scripts/remove-vm.sh \
+      --name="$NODE_NAME" \
+      --zone="$NODE_ZONE"
+
+  destroy_node: &destroy_node |
+    ### Destroy node
+    ./global-ecosystem/scripts/remove-vm.sh \
+      --name="$NODE_NAME" \
+      --zone="$NODE_ZONE"
+      # We won't destroy it for now, just shutdown
+      # --destroy

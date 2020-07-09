@@ -70,11 +70,17 @@ VM_INSTANCE=$(gcloud compute instances list --filter="name:($VM_NAME)" --format 
 if [ -z "$VM_INSTANCE" ]; then
 
     if [ ! -z "$STATIC_IP" ]; then
-        VM_REGION=${VM_ZONE:0:-2}    
-        info "Creating static IP address (region: $VM_REGION)..."
-        gcloud compute addresses create $VM_NAME-address \
-            --network-tier=STANDARD --region=$VM_REGION
-        EXTERNAL_IP=$(gcloud compute addresses describe $VM_NAME-address --region $VM_REGION  --format json | jq '.address' | tr -d '"')
+        VM_REGION=${VM_ZONE:0:-2}
+        ADDRESS_NAME=$VM_NAME-address
+        LIST_ADDRESSES=$(gcloud compute addresses list --uri)
+        if grep -q "$ADDRESS_NAME" <<<"$LIST_ADDRESSES"; then
+            info "Creating static IP address (region: $VM_REGION)..."
+            gcloud compute addresses create $VM_NAME-address \
+                --network-tier=STANDARD --region=$VM_REGION
+        else
+            info "Static IP address already exists, skipping..."
+        fi
+        EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION  --format json | jq '.address' | tr -d '"')
         ADDITIONAL_ARGS="$ADDITIONAL_ARGS --address=$EXTERNAL_IP"
     fi
 

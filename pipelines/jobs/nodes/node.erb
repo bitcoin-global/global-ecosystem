@@ -1,0 +1,163 @@
+### Resource overrides
+meta_plan:
+  runner-config: &runner-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    params:
+      SERVICE_ACCOUNT               : ((gcp.service-account-email))
+      GCLOUD_CREDENTIALS            : ((gcp.service-account))
+      GCP_PROJECT                   : bitcoin-global-infra
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
+      GITHUB_TOKEN                  : ((git.token))
+      TERM                          : xterm-256color
+      OPERATION                     : <%= operation %>
+
+  run-<%= operation %>:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( join "\n" meta.perform_<%= operation %> ))
+
+  trigger-<%= operation %>:
+    - (( grab meta.configure_git ))
+    - (( grab meta.push-trigger ))
+
+  update-list:
+    - (( grab meta.configure_git ))
+    - (( grab meta.update_nodelist ))
+
+### Configure triggers
+resources:
+<% nodes.each do |environment| %>
+- name: trigger-<%= environment.type %>
+  type: git
+  icon: github
+  source:
+    uri     : (( grab meta.global-nodes-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch  : triggers
+    commit_filter:
+      include: ["[trigger] <%= operation %> <%= environment.type %>"]
+<% end %>
+
+### Pipeline config
+jobs:
+<% nodes.each do |environment| %>
+- name: <%= operation %>-<%= environment.type %>
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: builder
+
+  - task: "[<%= operation %>] Trigger <%= environment.type %>"
+    <<: *runner-config
+    config:
+      platform: linux
+      params: 
+        GIT_FOLDER       : trigger
+        GIT_BRANCH       : triggers
+        GIT_REPO         : (( grab meta.global-nodes-repository ))
+        TRIGGER_OPERATION: <%= operation %>
+        TRIGGER_NET      : <%= environment.type %>
+        COMMIT_MESSAGE   : "[trigger] <%= operation %> <%= environment.type %>"
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.trigger-<%= operation %> ))
+      outputs:
+      - name: trigger
+  - put: trigger-<%= environment.type %>
+    params: {repository: trigger}
+
+<% environment.node_locations.each do |node| %>
+- name: <%= environment.type %>--<%= node %>
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+
+  - in_parallel:
+    - get: global-ecosystem
+    - get: trigger-<%= environment.type %>
+      trigger: true
+      passed: [<%= operation %>-<%= environment.type %>]
+    - get: builder
+
+  - task: "[<%= operation %>] Node [<%= environment.type %>-<%= node %>]"
+    <<: *runner-config
+    config:
+      platform: linux
+      params: 
+        # Node config
+        NODE_NAME         : <%= environment.type %>--<%= node %>-global-node
+        NODE_ZONE         : <%= node %>
+        NODE_TYPE         : <%= environment.type %>
+        NODE_SIZE         : <%= environment.machine_type %>
+        NODE_DISK_SIZE    : <%= environment.hdd_size %>
+        NODE_DISK_TYPE    : pd-standard
+        BITCOIN_ENTRYPOINT: <%= environment.command %>
+        # Monitoring
+        NETDATA_INFRA_ROOM : <%= environment.netdata_room %>
+        NETDATA_INFRA_TOKEN: ((monitoring.infra-token))
+      inputs:
+        - name: global-ecosystem
+      outputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.run-<%= operation %> ))
+<% end %>
+
+- name: update-<%= environment.type %>-list
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: global-ecosystem
+    - get: trigger-<%= environment.type %>
+      trigger: true
+      passed:
+      <% environment.node_locations.each do |node| %>
+      - <%= environment.type %>--<%= node %>
+      <% end %>
+    - get: builder
+
+  - task: "[<%= operation %>] Update <%= environment.type %> node list"
+    <<: *runner-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      params: 
+        NODE_LIST: <%= environment.type %>
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.update-list ))
+    
+  - put: global-ecosystem
+    params: {repository: node-data}
+
+    <: ((inject slack-notify))
+
+<% end %>
+
+### Group configs
+groups:
+<% nodes.each do |environment| %>
+- name: <%= environment.type %>
+  jobs:
+  - <%= operation %>-<%= environment.type %>
+  <% environment.node_locations.each do |node| %>
+  - <%= environment.type %>--<%= node %>
+  <% end %>
+  - update-<%= environment.type %>-list
+<% end %>

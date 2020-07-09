@@ -1,6 +1,7 @@
 ---
 meta:
   configure_gcloud: &configure_gcloud |
+    ### Configure Google Cloud authentication
     echo "$GCLOUD_CREDENTIALS" > $GOOGLE_APPLICATION_CREDENTIALS
     gcloud auth activate-service-account \
       $SERVICE_ACCOUNT --key-file=$GOOGLE_APPLICATION_CREDENTIALS --project=$GCP_PROJECT
@@ -14,77 +15,18 @@ meta:
     git config --global user.name  "bitcoin-global-bot"
     git config --global user.email "bot@bitcoin-global.io"
 
-  prepare_node: &prepare_node |
-    echo "Prepare machine"
-    apt-get update
-    apt-get install -y \
-      gnupg2 ca-certificates git software-properties-common \
-      python3.6 sudo nano ruby wget curl pigz \
-      autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq
-    service apt-cacher-ng restart
+  push-trigger: &push-trigger |
+    # Get timestamp
+    timestamp=$(date '+%d/%m/%Y %H:%M:%S')
 
-    ### Install monitoring
-    bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
-    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+    # Add trigger details
+    git clone -b $GIT_BRANCH $GIT_REPO $GIT_FOLDER && cd $GIT_FOLDER
+    echo "\`$TRIGGER_OPERATION-$TRIGGER_NET\` | \`$timestamp\`" >> TRIGGERS.md
 
-  make_node: &make_node |
-    ### Deploy Node VM on GCP
-    global-ecosystem/scripts/add-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE" \
-      --size="$NODE_SIZE" \
-      --disk-size="$NODE_DISK_SIZE" \
-      --disk-type="$NODE_DISK_TYPE" \
-      --tags="bitcoin-global,bitcoin-$NODE_TYPE" \
-      --static-ip
+    # Sync changes
+    git fetch && git pull
+    git add .
+    git commit -m "$COMMIT_MESSAGE"
 
-  wait_for_node: &wait_for_node |
-    echo "Waiting until VM operational..."
-    counter=0
-    until gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT --command 'echo'; do
-        counter=$((counter+1))
-        if [[ "$counter" -gt 120 ]]; then
-            echo "Timed out!"
-            exit 1
-        fi
-        sleep 1
-    done
-    echo "Success!"
-
-  install_bitcoin_global: &install_bitcoin_global |
-    ### Prepare for installataion
-    mkdir -p /binaries
-    mkdir -p /bitcoin-global
-    rm -rf ./global-ecosystem
-    git clone https://github.com/bitcoin-global/global-ecosystem.git
-    chmod +x ./global-ecosystem/src/bitglobal/install-node.sh
-
-    ### Installing Bitcoin Global node
-    ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v 0.19.1 -r bootstrap -p 18222 \
-      -t /binaries -d /bitcoin-global
-
-  run_bitcoin_global: &run_bitcoin_global |
-    cd /binaries/bin
-    ./bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
-
-  setup_node: &setup_node
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
-    - (( grab meta.prepare_node ))
-    - (( grab meta.configure_git ))
-    - (( grab meta.install_bitcoin_global ))
-    - (( grab meta.run_bitcoin_global ))
-    - exit
-    - EOF
-
-  node_stop: &node_stop |
-    global-ecosystem/scripts/remove-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE"
-
-  node_destroy: &node_destroy |
-    global-ecosystem/scripts/remove-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE"
-      # We won't destroy it for now, just shutdown
-      # --destroy
+  update_nodelist: &update_nodelist |
+    echo "Updating node list"

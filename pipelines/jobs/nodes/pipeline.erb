@@ -13,24 +13,18 @@ spruce:
       - resources/git.global-ecosystem.yml
       - resources/docker.builder.yml
   - with_all_in: jobs/nodes/
-    regexp: ".*.yml"
-  to: ignore.nodes.pipeline.yml
+    regexp: ".*.(yml)"
+  to: ignore.nodes-<%= operation %>.pipeline.yml
 
 # Clean pipeline file
-- base:  ignore.nodes.pipeline.yml
+- base: ignore.nodes-<%= operation %>.pipeline.yml
   prune:
   - meta
   - meta_plan
-  to: ignore.nodes.pipeline.yml
-
-# Run sparcing
-exec:
-- executable: ruby
-  args:
-  - jobs/nodes/node_config.rb
+  to: ignore.nodes-<%= operation %>.pipeline.yml
 
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: deploy-nodes
-  config: ignore.nodes.pipeline.yml
+  name: <%= operation %>-nodes
+  config: ignore.nodes-<%= operation %>.pipeline.yml
