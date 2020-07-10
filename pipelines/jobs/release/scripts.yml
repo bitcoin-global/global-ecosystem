@@ -74,7 +74,7 @@ meta:
 
   release_build: &release_build |
     ### Build releases
-    ./gitian-build.py -o $RELEASE_TYPE --commit -j7 -m6500 -b fhivemind $GITHUB_TAG
+    ./gitian-build.py -o $RELEASE_TYPE --commit $BUILDER_VM_FLAGS -b fhivemind $GITHUB_TAG
     
   make_builder: &make_builder |
     ### Deploy Builder VM on GCP
