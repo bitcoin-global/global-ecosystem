@@ -35,7 +35,7 @@ meta:
       #========================================================
       # Builder config
       BUILDER_VM_NAME               : master-bitcoin-builder
-      BUILDER_VM_ZONE               : us-central1-b
+      BUILDER_VM_ZONE               : europe-west2-b
       BUILDER_VM_SIZE               : n1-highcpu-8
       BUILDER_DISK_SIZE             : 60GB
       BUILDER_DISK_TYPE             : pd-standard
