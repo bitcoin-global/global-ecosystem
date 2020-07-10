@@ -69,13 +69,13 @@ meta:
   install_bitcoin: &install_bitcoin |
     ### Installing Bitcoin Global
     ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v {BITCOIN_VERSION} -r {BITCOIN_RELEASE} \
+      -v ${BITCOIN_VERSION} -r ${BITCOIN_RELEASE} \
       -t /binaries -d ${BITCOIN_DATA_DIR}
 
   update_bitcoin: &update_bitcoin |
     ### Updating Bitcoin Global
     ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v {BITCOIN_VERSION} -r {BITCOIN_RELEASE} \
+      -v ${BITCOIN_VERSION} -r ${BITCOIN_RELEASE} \
       -t /binaries -d ${BITCOIN_DATA_DIR}
 
   run_bitcoin: &run_bitcoin |
@@ -118,7 +118,7 @@ meta:
   generate_env_config: &generate_env_config |
     ### =============================
     ### BITGLOB CONFIGURATION
-    cat <<EOF > /binaries/.bitglobal/bitglob.conf
+    cat <<CONFIG > /binaries/.bitglobal/bitglob.conf
     listen=1
     maxconnections=64
     upnp=1
@@ -141,17 +141,17 @@ meta:
     bind=0.0.0.0
     rpcbind=127.0.0.1
     rpcport=18444
-    EOF
+    CONFIG
 
     ### =============================
     ### BITGLOB SERVICE CONFIGURATION
-    cat <<EOF > /binaries/bin/startup-script.sh
+    cat <<SCRIPT > /binaries/bin/startup-script.sh
     #!/bin/bash
     export GITHUB_TOKEN=${GITHUB_TOKEN}
     /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
-    EOF
+    SCRIPT
 
-    cat <<EOF > /etc/systemd/system/bitcoin_global.service
+    cat <<SERVICE > /etc/systemd/system/bitcoin_global.service
     [Unit]
     Description=Bitcoin Global script
 
@@ -160,7 +160,7 @@ meta:
 
     [Install]
     WantedBy=multi-user.target
-    EOF
+    SERVICE
 
     chmod +x /binaries/bin/startup-script.sh
     systemctl enable bitcoin_global
