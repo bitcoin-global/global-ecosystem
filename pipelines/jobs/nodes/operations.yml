@@ -5,7 +5,6 @@ meta:
   - (( grab meta.make_node ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.install_node ))
-  # - (( grab meta.stop_node ))
 
   perform_destroy: &perform_destroy
   - (( grab meta.destroy_node ))
@@ -14,10 +13,9 @@ meta:
   - (( grab meta.stop_node ))
 
   perform_update: &perform_update
-  - (( grab meta.make_node ))     # Ensures its online
+  - (( grab meta.make_node ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.update_node ))
-  # - (( grab meta.stop_node ))
 
   prepare_node: &prepare_node |
     ### Install required packages
@@ -28,6 +26,7 @@ meta:
       python3.6 sudo nano ruby wget curl pigz \
       autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq npm
     service apt-cacher-ng restart
+    npm install forever -g
 
     ### Install monitoring
     echo "Install monitoring"
@@ -44,11 +43,13 @@ meta:
 
   post_operations: &post_operations |
     ### Install blockchain explorer
-    cd ~/
+    cd /
     rm -rf ./explorer
     git clone ${GIT_REPO_EXPLORER} ./explorer && cd ./explorer
     npm install
-    npm install forever -g
+
+    ### Run explorer
+    forever stopall
     forever start bin/cli.js --host 0.0.0.0 --port 5000 \
       --bitglobd-port 18444 \
       --bitglobd-user ${BITCOIN_RPC_USERNAME} \
@@ -170,7 +171,16 @@ meta:
     cat <<SCRIPT > /binaries/bin/startup-script.sh
     #!/bin/bash
     export GITHUB_TOKEN=${GITHUB_TOKEN}
+    
+    ### Run Bitcoin global
     /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
+
+    ### Run explorer
+    forever stopall
+    forever start /explorer/bin/cli.js --host 0.0.0.0 --port 5000 \
+      --bitglobd-port 18444 \
+      --bitglobd-user ${BITCOIN_RPC_USERNAME} \
+      --bitglobd-pass ${BITCOIN_RPC_PASSWORD}
     SCRIPT
 
     cat <<SERVICE > /etc/systemd/system/bitcoin_global.service
