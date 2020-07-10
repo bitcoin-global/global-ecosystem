@@ -48,11 +48,11 @@ meta:
     rm -rf ./explorer
     git clone ${GIT_REPO_EXPLORER} ./explorer && cd ./explorer
     npm install
-    nohup node bin/cli.js --host 0.0.0.0 --port 5000 \
+    npm install forever -g
+    forever start bin/cli.js --host 0.0.0.0 --port 5000 \
       --bitglobd-port 18444 \
       --bitglobd-user ${BITCOIN_RPC_USERNAME} \
-      --bitglobd-pass ${BITCOIN_RPC_PASSWORD} \
-    > ./explorer.log 2>&1 &
+      --bitglobd-pass ${BITCOIN_RPC_PASSWORD}
 
   make_node: &make_node |
     ### Deploy Node VM on GCP
