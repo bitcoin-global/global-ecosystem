@@ -7,3 +7,5 @@ meta:
   global-gizmos-repository: https://github.com/bitcoin-global/global-gizmos.git
   global-ecosystem-repository: https://github.com/bitcoin-global/global-ecosystem.git
   global-nodes-repository: https://github.com/bitcoin-global/global-nodes.git
+  global-explorer-repository: https://github.com/bitcoin-global/explorer.git
+  global-explorer-repository: https://github.com/bitcoin-global/explorer.git

@@ -26,7 +26,7 @@ meta:
     apt-get install -y \
       gnupg2 ca-certificates git software-properties-common \
       python3.6 sudo nano ruby wget curl pigz \
-      autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq
+      autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq npm
     service apt-cacher-ng restart
 
     ### Install monitoring
@@ -34,12 +34,25 @@ meta:
     bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
+  post_git_ops: &post_git_ops |
     ### Install required tools
     mkdir -p /binaries
     mkdir -p /bitcoin-global
     rm -rf ./global-ecosystem
-    git clone https://github.com/bitcoin-global/global-ecosystem.git
+    git clone ${GIT_REPO_ECOSYSTEM} ./global-ecosystem
     chmod +x ./global-ecosystem/src/bitglobal/install-node.sh
+
+  post_operations: &post_operations |
+    ### Install blockchain explorer
+    cd ~/
+    rm -rf ./explorer
+    git clone ${GIT_REPO_EXPLORER} ./explorer && cd ./explorer
+    npm install
+    nohup node bin/cli.js --host 0.0.0.0 --port 5000 \
+      --bitglobd-port 18444 \
+      --bitglobd-user ${BITCOIN_RPC_USERNAME} \
+      --bitglobd-pass ${BITCOIN_RPC_PASSWORD} \
+    > ./explorer.log 2>&1 &
 
   make_node: &make_node |
     ### Deploy Node VM on GCP
@@ -79,6 +92,11 @@ meta:
       -t /binaries -d ${BITCOIN_DATA_DIR}
 
   run_bitcoin: &run_bitcoin |
+    ### Stop Bitcoin Global
+    /binaries/bin/bitglob-cli stop || echo "mainnet: Already shutdown"
+    /binaries/bin/bitglob-cli -testnet stop || echo "testnet: Already shutdown"
+    sleep 1m
+
     ### Run Bitcoin Global
     /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
 
@@ -86,9 +104,11 @@ meta:
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
+    - (( grab meta.post_git_ops ))
     - (( grab meta.install_bitcoin ))
     - (( grab meta.generate_env_config ))
     - (( grab meta.run_bitcoin ))
+    - (( grab meta.post_operations ))
     - exit
     - EOF
 
@@ -96,9 +116,11 @@ meta:
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
+    - (( grab meta.post_git_ops ))
     - (( grab meta.update_bitcoin ))
     - (( grab meta.generate_env_config ))
     - (( grab meta.run_bitcoin ))
+    - (( grab meta.post_operations ))
     - exit
     - EOF
 

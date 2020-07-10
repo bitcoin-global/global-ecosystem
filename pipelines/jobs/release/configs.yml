@@ -2,8 +2,8 @@
 meta:
   overrides:
     bitcoin-global:
-      branch: "0.19.1-bootstrap"
-      version: "0.19.1"
+      branch: "0.19.2"
+      version: "0.19.2"
 
   release-params: &release-params
     params:

@@ -37,7 +37,7 @@
 - type: "test"
   # GCP Environment
   gcp:
-    machine_type  : "f1-micro"
+    machine_type  : "g1-small"
     hdd_size      : "60GB"
     node_locations: 
     - us-central1-a

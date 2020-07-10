@@ -5,6 +5,7 @@ meta_plan:
     timeout: 20m
     privileged: true
     params:
+      # Secrets
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
       GCLOUD_CREDENTIALS            : ((gcp.service-account))
       SSH_PRIVATE_KEY               : ((ssh.private))
@@ -12,9 +13,13 @@ meta_plan:
       SSH_USER                      : ((ssh.username))
       GCP_PROJECT                   : bitcoin-global-infra
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
-      GITHUB_TOKEN                  : ((git.token))
       TERM                          : xterm-256color
       OPERATION                     : <%= operation %>
+      
+      # Git configs
+      GITHUB_TOKEN      : ((git.token))
+      GIT_REPO_EXPLORER : (( grab meta.global-explorer-repository ))
+      GIT_REPO_ECOSYSTEM: (( grab meta.global-ecosystem-repository ))
 
   run-<%= operation %>:
     - (( grab meta.configure_git ))
