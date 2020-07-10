@@ -21,20 +21,20 @@ spruce:
       - resources/docker.builder.yml
   - with_all_in: jobs/release/
     regexp: ".*.(yml)"
-  to: ignore.release.pipeline.yml
+  to: $tmppipeline
 
 # Clean pipeline file
-- base:  ignore.release.pipeline.yml
+- base:  $tmppipeline
   prune:
   - meta
   - meta_plan
-  to: ignore.release.pipeline.yml
+  to: $tmppipeline
 
 # Deploy pipeline file
 fly:
   target: bitglob
   name: release-procedures
-  config: ignore.release.pipeline.yml
+  config: $tmppipeline
 EOF
 
 # Apply file

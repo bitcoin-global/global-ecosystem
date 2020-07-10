@@ -1,0 +1,53 @@
+
+###############################################################################
+#
+#                               nodes.yml
+#
+# This is the production environment configuration for Bitcoin Global.
+# Any changes to this file might cause downtime and disruption of stability.
+#
+# DO NOT UPDATE OR CHANGE IF YOU DO NOT KNOW WHAT YOU ARE DOING!
+#
+###############################################################################
+
+### ===========================================================
+### =================================================== MAINNET
+- type: "main"
+  # GCP Environment
+  gcp:
+    machine_type  : "g1-small"
+    hdd_size      : "400GB"
+    node_locations: 
+    - us-central1-a
+    - southamerica-east1-b
+    - asia-east2-a
+    - asia-south1-c
+    - australia-southeast1-b
+    - europe-west1-b
+  # Monitoring
+  monitoring:
+    netdata_room: "b99a57d2-397a-4d9d-9655-3113b1c8ccef"
+  # Node env config
+  port   : 8222
+  command: "-skiphardforkibd -bootstrap -daemon"
+  release: v0.19.1-bootstrap
+  version: 0.19.1
+### ===========================================================
+### =================================================== TESTNET
+- type: "test"
+  # GCP Environment
+  gcp:
+    machine_type  : "f1-micro"
+    hdd_size      : "60GB"
+    node_locations: 
+    - us-central1-a
+    - europe-west1-b
+    - asia-east2-a
+  # Monitoring
+  monitoring:
+    netdata_room: "a9c21a87-65f9-4bd8-86b0-e9de831a597a"
+  # Node env config
+  port   : 18222
+  command: "-testnet -skiphardforkibd -bootstrap -daemon"
+  release: v0.19.1-bootstrap
+  version: 0.19.1

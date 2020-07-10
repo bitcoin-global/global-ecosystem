@@ -5,16 +5,19 @@ meta:
   - (( grab meta.make_node ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.install_node ))
-  - (( grab meta.stop_node ))
+  # - (( grab meta.stop_node ))
 
   perform_destroy: &perform_destroy
   - (( grab meta.destroy_node ))
+
+  perform_stop: &perform_stop
+  - (( grab meta.stop_node ))
 
   perform_update: &perform_update
   - (( grab meta.make_node ))     # Ensures its online
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.update_node ))
-  - (( grab meta.stop_node ))
+  # - (( grab meta.stop_node ))
 
   prepare_node: &prepare_node |
     ### Install required packages
@@ -65,26 +68,26 @@ meta:
 
   install_bitcoin: &install_bitcoin |
     ### Installing Bitcoin Global
-    # ./global-ecosystem/src/bitglobal/install-node.sh \
-    #  -v 0.19.1 -r bootstrap -p 18222 \
-    #  -t /binaries -d /bitcoin-global
+    ./global-ecosystem/src/bitglobal/install-node.sh \
+      -v {BITCOIN_VERSION} -r {BITCOIN_RELEASE} \
+      -t /binaries -d ${BITCOIN_DATA_DIR}
 
   update_bitcoin: &update_bitcoin |
     ### Updating Bitcoin Global
-    # ./global-ecosystem/src/bitglobal/install-node.sh \
-    #  -v 0.19.1 -r bootstrap -p 18222 \
-    #  -t /binaries -d /bitcoin-global
+    ./global-ecosystem/src/bitglobal/install-node.sh \
+      -v {BITCOIN_VERSION} -r {BITCOIN_RELEASE} \
+      -t /binaries -d ${BITCOIN_DATA_DIR}
 
   run_bitcoin: &run_bitcoin |
     ### Run Bitcoin Global
-    echo "Works"
-    # /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
+    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
 
   install_node: &install_node
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.install_bitcoin ))
+    - (( grab meta.generate_env_config ))
     - (( grab meta.run_bitcoin ))
     - exit
     - EOF
@@ -94,6 +97,7 @@ meta:
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.update_bitcoin ))
+    - (( grab meta.generate_env_config ))
     - (( grab meta.run_bitcoin ))
     - exit
     - EOF
@@ -108,6 +112,55 @@ meta:
     ### Destroy node
     ./global-ecosystem/scripts/remove-vm.sh \
       --name="$NODE_NAME" \
-      --zone="$NODE_ZONE"
-      # We won't destroy it for now, just shutdown
-      # --destroy
+      --zone="$NODE_ZONE" \
+      --destroy
+
+  generate_env_config: &generate_env_config |
+    ### =============================
+    ### BITGLOB CONFIGURATION
+    cat <<EOF > /binaries/.bitglobal/bitglob.conf
+    listen=1
+    maxconnections=64
+    upnp=1
+    txindex=1
+
+    dbcache=64
+    par=2
+    checkblocks=24
+    checklevel=0
+
+    disablewallet=1
+    datadir=${BITCOIN_DATA_DIR}
+
+    rpcallowip=127.0.0.1
+    rpcuser=${BITCOIN_RPC_USERNAME}
+    rpcpassword=${BITCOIN_RPC_PASSWORD}
+
+    [${BITCOIN_NETWORK_TYPE}]
+    port=${BITCOIN_PORT}
+    bind=0.0.0.0
+    rpcbind=127.0.0.1
+    rpcport=18444
+    EOF
+
+    ### =============================
+    ### BITGLOB SERVICE CONFIGURATION
+    cat <<EOF > /binaries/bin/startup-script.sh
+    #!/bin/bash
+    export GITHUB_TOKEN=${GITHUB_TOKEN}
+    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
+    EOF
+
+    cat <<EOF > /etc/systemd/system/bitcoin_global.service
+    [Unit]
+    Description=Bitcoin Global script
+
+    [Service]
+    ExecStart=/binaries/bin/startup-script.sh
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+
+    chmod +x /binaries/bin/startup-script.sh
+    systemctl enable bitcoin_global

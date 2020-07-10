@@ -4,36 +4,9 @@ require 'json'
 require 'ostruct'
 
 ### ---------- Configs
-operations = ["deploy", "destroy", "update"]
-
-### ---------- Define node data
-nodes = JSON.parse(YAML.load('
-### MAINNET
-- type          : "main"
-  machine_type  : "g1-small"
-  hdd_size      : "400GB"
-  netdata_room  : "b99a57d2-397a-4d9d-9655-3113b1c8ccef"
-  command       : "-bootstrap -daemon"
-  node_locations: 
-  - us-central1-a
-  - southamerica-east1-b
-  - asia-east2-a
-  - asia-south1-c
-  - australia-southeast1-b
-  - europe-west1-b
-
-### TESTNET
-- type          : "test"
-  machine_type  : "f1-micro"
-  hdd_size      : "60GB"
-  netdata_room  : "a9c21a87-65f9-4bd8-86b0-e9de831a597a"
-  command       : "-testnet -skiphardforkibd -bootstrap -daemon"
-  node_locations: 
-  - us-central1-a
-  - europe-west1-b
-  - asia-east2-a
-'
-).to_json, object_class: OpenStruct)
+env_config_file = File.expand_path(File.dirname(__FILE__) + "../../../../") + '/.env/nodes.yml'
+net_config      = JSON.parse(YAML.load_file(env_config_file).to_json, object_class: OpenStruct)
+operations      = ["deploy", "stop", "update"]
 
 ### ---------- Parse node data
 for operation in operations do

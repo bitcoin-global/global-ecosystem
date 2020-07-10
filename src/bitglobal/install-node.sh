@@ -539,6 +539,7 @@ install_bitcoin_global() {
 listen=1
 maxconnections=64
 upnp=1
+txindex=1
 
 dbcache=64
 par=2

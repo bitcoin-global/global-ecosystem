@@ -27,11 +27,12 @@ meta_plan:
 
   update-list:
     - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
     - (( grab meta.update_nodelist ))
 
 ### Configure triggers
 resources:
-<% nodes.each do |environment| %>
+<% net_config.each do |environment| %>
 - name: trigger-<%= environment.type %>
   type: git
   icon: github
@@ -46,7 +47,7 @@ resources:
 
 ### Pipeline config
 jobs:
-<% nodes.each do |environment| %>
+<% net_config.each do |environment| %>
 - name: <%= operation %>-<%= environment.type %>
   build_logs_to_retain: 3
   serial: true
@@ -76,7 +77,7 @@ jobs:
   - put: trigger-<%= environment.type %>
     params: {repository: trigger}
 
-<% environment.node_locations.each do |node| %>
+<% environment.gcp.node_locations.each do |node| %>
 - name: <%= environment.type %>--<%= node %>
   build_logs_to_retain: 3
   serial: true
@@ -95,15 +96,25 @@ jobs:
       platform: linux
       params: 
         # Node config
-        NODE_NAME         : <%= environment.type %>--<%= node %>-global-node
-        NODE_ZONE         : <%= node %>
-        NODE_TYPE         : <%= environment.type %>
-        NODE_SIZE         : <%= environment.machine_type %>
-        NODE_DISK_SIZE    : <%= environment.hdd_size %>
-        NODE_DISK_TYPE    : pd-standard
-        BITCOIN_ENTRYPOINT: <%= environment.command %>
+        NODE_NAME     : <%= environment.type %>--<%= node %>-global-node
+        NODE_ZONE     : <%= node %>
+        NODE_TYPE     : <%= environment.type %>
+        NODE_SIZE     : <%= environment.gcp.machine_type %>
+        NODE_DISK_SIZE: <%= environment.gcp.hdd_size %>
+        NODE_DISK_TYPE: pd-standard
+
+        # Bitcoin config
+        BITCOIN_ENTRYPOINT  : <%= environment.command %>
+        BITCOIN_NETWORK_TYPE: <%= environment.type %>
+        BITCOIN_PORT        : <%= environment.port %>
+        BITCOIN_DATA_DIR    : /bitcoin-global
+        BITCOIN_VERSION     : <%= environment.version %>
+        BITCOIN_RELEASE     : <%= environment.release %>
+        BITCOIN_RPC_USERNAME: admin
+        BITCOIN_RPC_PASSWORD: ((rpc.password))
+    
         # Monitoring
-        NETDATA_INFRA_ROOM : <%= environment.netdata_room %>
+        NETDATA_INFRA_ROOM : <%= environment.monitoring.netdata_room %>
         NETDATA_INFRA_TOKEN: ((monitoring.infra-token))
       inputs:
         - name: global-ecosystem
@@ -122,11 +133,11 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: global-ecosystem
+    - get: global-nodes
     - get: trigger-<%= environment.type %>
       trigger: true
       passed:
-      <% environment.node_locations.each do |node| %>
+      <% environment.gcp.node_locations.each do |node| %>
       - <%= environment.type %>--<%= node %>
       <% end %>
     - get: builder
@@ -136,15 +147,23 @@ jobs:
     config:
       platform: linux
       inputs:
-        - name: global-ecosystem
+        - name: global-nodes
       params: 
-        NODE_LIST: <%= environment.type %>
+        TRIGGER_OPERATION: <%= operation %>
+        TRIGGER_NET      : <%= environment.type %>
+        SAVE_FILE        : <%= environment.type.upcase %>NET-net_config.md
+        NODE_ZONES       : <%= environment.gcp.node_locations.join(',')  %>
+        COMMIT_MESSAGE   : "[<%= environment.type %>net] Update node information for <%= operation %> action"
       run:
         user: root
         path: bash
         args:
           - -exc
           - (( join "\n" meta_plan.update-list ))
+      outputs:
+      - name: global-nodes
+  - put: global-nodes
+    params: {repository: global-nodes}
 
     <: ((inject slack-notify))
 
@@ -152,11 +171,11 @@ jobs:
 
 ### Group configs
 groups:
-<% nodes.each do |environment| %>
+<% net_config.each do |environment| %>
 - name: <%= environment.type %>
   jobs:
   - <%= operation %>-<%= environment.type %>
-  <% environment.node_locations.each do |node| %>
+  <% environment.gcp.node_locations.each do |node| %>
   - <%= environment.type %>--<%= node %>
   <% end %>
   - update-<%= environment.type %>-list
