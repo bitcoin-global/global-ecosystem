@@ -53,7 +53,7 @@ DISK_TYPE=${DISK_TYPE:-pd-standard}
 VM_PREEMPTIBLE=${VM_PREEMPTIBLE:-}
 LATEST_BIONIC=$(gcloud compute images list --format="value(NAME)" --filter="name~'ubuntu-1804-bionic'" --format json | jq '.[0].name' | tr -d '"')
 IMAGE=${IMAGE:-$LATEST_BIONIC}
-IMAGE_PROJECT=${IMAGE:-ubuntu-os-cloud}
+IMAGE_PROJECT=${IMAGE_PROJECT:-ubuntu-os-cloud}
 ADDITIONAL_ARGS=""
 
 if [ -z $VM_SCRIPT ]; 

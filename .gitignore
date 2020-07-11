@@ -2,3 +2,4 @@
 concourse-secrets
 ignore.*
 ignore*
+.vscode
