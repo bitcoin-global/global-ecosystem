@@ -1,0 +1,12 @@
+---
+resources:
+- name: builder-ecosystem
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.global-ecosystem-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: master
+    paths:  
+    - src/builder

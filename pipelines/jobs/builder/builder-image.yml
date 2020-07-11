@@ -3,9 +3,10 @@ jobs:
 - name: make-builder
   serial: true
   plan:
-  - get: global-ecosystem
+  - get: builder-ecosystem
+    trigger: true
   - put: builder
     params:
-      build: global-ecosystem/src/builder
-      additional_tags: global-ecosystem/src/builder/version
+      build: builder-ecosystem/src/builder
+      additional_tags: builder-ecosystem/src/builder/version
   <: ((inject slack-notify))

@@ -17,7 +17,7 @@ spruce:
   - with:
       files:
       - resources/docker.builder.yml
-      - resources/git.global-ecosystem.yml
+      - resources/git.builder-ecosystem.yml
       - resources/git.pipeline-ecosystem.yml
   - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
