@@ -31,6 +31,10 @@ case $i in
     shift ;;
     --tags=*)              TAGS="${i#*=}"
     shift ;;
+    --image=*)             IMAGE="${i#*=}"
+    shift ;;
+    --image-project=*)     IMAGE_PROJECT="${i#*=}"
+    shift ;;
     --preemptible)         VM_PREEMPTIBLE="--preemptible"
     shift ;;
     --static-ip)           STATIC_IP="true"
@@ -47,6 +51,9 @@ VM_SIZE=${VM_SIZE:-g1-small}
 DISK_SIZE=${DISK_SIZE:-10GB}
 DISK_TYPE=${DISK_TYPE:-pd-standard}
 VM_PREEMPTIBLE=${VM_PREEMPTIBLE:-}
+LATEST_BIONIC=$(gcloud compute images list --format="value(NAME)" --filter="name~'ubuntu-1804-bionic'" --format json | jq '.[0].name' | tr -d '"')
+IMAGE=${IMAGE:-$LATEST_BIONIC}
+IMAGE_PROJECT=${IMAGE:-ubuntu-os-cloud}
 ADDITIONAL_ARGS=""
 
 if [ -z $VM_SCRIPT ]; 
@@ -97,8 +104,8 @@ if [ -z "$VM_INSTANCE" ]; then
         --maintenance-policy=TERMINATE \
         $VM_PREEMPTIBLE \
         --scopes=https://www.googleapis.com/auth/devstorage.read_only,https://www.googleapis.com/auth/logging.write,https://www.googleapis.com/auth/monitoring.write,https://www.googleapis.com/auth/servicecontrol,https://www.googleapis.com/auth/service.management.readonly,https://www.googleapis.com/auth/trace.append \
-        --image=ubuntu-1804-bionic-v20200626 \
-        --image-project=ubuntu-os-cloud \
+        --image=$IMAGE \
+        --image-project=$IMAGE_PROJECT \
         --boot-disk-size=$DISK_SIZE \
         --boot-disk-type=$DISK_TYPE \
         --boot-disk-device-name=$VM_NAME \
