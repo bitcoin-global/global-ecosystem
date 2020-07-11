@@ -29,17 +29,10 @@ jobs:
         args:
           - -exc
           - |
-            ### Download tool
-            wget https://github.com/concourse/concourse/releases/download/v6.2.0/fly-6.2.0-linux-amd64.tgz -O /tmp/fly.gz
-            mkdir -p ~/bin
-            tar xvzfO /tmp/fly.gz > ~/bin/fly
-            chmod +x ~/bin/fly
-            PATH=$PATH:~/bin
-
             ### Login
             fly --target $CONCOURSE_TARGET login \
-                --concourse-url $CONCOURSE_URL --team-name $CONCOURSE_TEAM \
-                --username ${CONCOURSE_USERNAME} --password ${CONCOURSE_PASSWORD}
+               --concourse-url $CONCOURSE_URL --team-name $CONCOURSE_TEAM \
+               --username ${CONCOURSE_USERNAME} --password ${CONCOURSE_PASSWORD}
 
             ### Run all pipeline scripts
             for f in ./pipeline-ecosystem/pipelines/*.pipeline.sh; do

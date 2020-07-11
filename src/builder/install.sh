@@ -32,6 +32,12 @@ chmod 755 /usr/local/bin/sops
 curl --silent --show-error --fail --location --output /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/"${YQ_BIN_VERSION}"/yq_linux_amd64
 chmod 755 /usr/local/bin/yq
 
+# install fly
+curl --silent --show-error --fail --location --output /tmp/fly.tgz https://github.com/concourse/concourse/releases/download/v"${FLY_VERSION}"/fly-"${FLY_VERSION}"-linux-amd64.tgz
+tar -C /usr/local/bin -xf /tmp/fly.tgz fly
+rm /tmp/fly.tgz
+chmod 755 /usr/local/bin/fly
+
 # set permissions
 mkdir -p /data
 chown gkh /data /entrypoint.sh /data/commands.sh
