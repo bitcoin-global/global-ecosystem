@@ -1,0 +1,48 @@
+---
+jobs:
+- name: update-pipelines
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: pipeline-ecosystem
+      # trigger: true
+    - get: builder
+
+  - task: Update pipelines
+    image: builder
+    timeout: 20m
+    privileged: true
+    params:
+      CONCOURSE_TARGET: bitglob
+      CONCOURSE_URL: https://ci.bitcoin-global.dev/
+      CONCOURSE_TEAM: main
+      CONCOURSE_USERNAME: ((concourse.username))
+      CONCOURSE_PASSWORD: ((concourse.password))
+    config:
+      platform: linux
+      inputs:
+        - name: pipeline-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - |
+            ### Download tool
+            wget https://github.com/concourse/concourse/releases/download/v6.2.0/fly-6.2.0-linux-amd64.tgz -O /tmp/fly.gz
+            tar xvzfO /tmp/fly.gz > /usr/bin/fly
+            chmod +x /usr/bin/fly
+            fly --version
+
+            ### Login
+            fly --target $CONCOURSE_TARGET login \
+                --concourse-url $CONCOURSE_URL --team-name $CONCOURSE_TEAM \
+                --username ${CONCOURSE_USERNAME} --password ${CONCOURSE_PASSWORD}
+
+            ### Run all pipeline scripts
+            for f in ./pipeline-ecosystem/pipelines/*.pipeline.sh; do
+              bash "$f" -H
+            done
+  
+  <: ((inject slack-notify))

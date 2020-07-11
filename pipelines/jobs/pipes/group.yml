@@ -1,0 +1,6 @@
+---
+groups:
+- name: pipes
+  jobs:
+  - update-pipelines
+  

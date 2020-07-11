@@ -35,6 +35,7 @@ fly:
   target: bitglob
   name: release-procedures
   config: $tmppipeline
+  non_interactive: true
 EOF
 
 # Apply file

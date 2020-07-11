@@ -18,7 +18,10 @@ spruce:
       files:
       - resources/docker.builder.yml
       - resources/git.global-ecosystem.yml
+      - resources/git.pipeline-ecosystem.yml
   - with_all_in: jobs/builder/
+    regexp: ".*.(yml)"
+  - with_all_in: jobs/pipes/
     regexp: ".*.(yml)"
   to: $tmppipeline
 
@@ -32,8 +35,9 @@ spruce:
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: docker-images
+  name: shared-infra
   config: $tmppipeline
+  non_interactive: true
 EOF
 
 # Apply file
