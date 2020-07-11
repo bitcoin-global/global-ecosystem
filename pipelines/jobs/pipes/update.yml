@@ -6,7 +6,7 @@ jobs:
   plan:
   - in_parallel:
     - get: pipeline-ecosystem
-      # trigger: true
+      trigger: true
     - get: builder
 
   - task: Update pipelines
