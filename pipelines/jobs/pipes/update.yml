@@ -35,7 +35,8 @@ jobs:
                --username ${CONCOURSE_USERNAME} --password ${CONCOURSE_PASSWORD}
 
             ### Run all pipeline scripts
-            for f in ./pipeline-ecosystem/pipelines/*.pipeline.sh; do
+            cd ./pipeline-ecosystem/pipelines
+            for f in ./*.pipeline.sh; do
               bash "$f" -H
             done
   
