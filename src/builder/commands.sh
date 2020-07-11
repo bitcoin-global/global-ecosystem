@@ -47,6 +47,24 @@ echo " ------------ "
 yq -V
 echo ""
 
+echo " ----------------- "
+echo "| AVIATOR VERSION |"
+echo " ----------------- "
+aviator -v
+echo ""
+
+echo " -------------- "
+echo "| RUBY VERSION |"
+echo " -------------- "
+ruby -v
+echo ""
+
+echo " ----------------- "
+echo "| PYTHON3 VERSION |"
+echo " ----------------- "
+python3 --version
+echo ""
+
 echo " ====================== "
 echo ""
 echo "To run a custom script, just mount it '--volume /your/script.sh:/data/commands.sh:ro'"

@@ -6,6 +6,7 @@ ENV KUBEVAL_VERSION 0.15.0
 ENV SOPS_VERSION v3.5.0
 ENV YQ_BIN_VERSION 3.3.0
 ENV FLY_VERSION 6.2.0
+ENV AVIATOR_VERSION 1.7.0
 
 COPY entrypoint.sh entrypoint.sh
 COPY commands.sh /data/commands.sh
