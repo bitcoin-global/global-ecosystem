@@ -28,9 +28,9 @@ meta:
       # Builder config
       BUILDER_VM_NAME               : master-bitcoin-builder
       BUILDER_VM_ZONE               : europe-west2-b
-      BUILDER_VM_SIZE               : n1-highcpu-4
-      BUILDER_CPUS                  : 3
-      BUILDER_RAM_MEMORY            : 3000
+      BUILDER_VM_SIZE               : n1-highcpu-8
+      BUILDER_CPUS                  : 8
+      BUILDER_RAM_MEMORY            : 6500
       BUILDER_DISK_SIZE             : 60GB
       BUILDER_DISK_TYPE             : pd-standard
       BUILDER_SCRIPT_PATH           : /tmp/builder-startup.sh

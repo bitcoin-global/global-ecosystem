@@ -3,7 +3,7 @@
 meta_plan:
   build-config: &build-config
     image: builder
-    timeout: 4h
+    timeout: 6h
     privileged: true
     <: (( inject meta.release-params ))
 
