@@ -66,7 +66,7 @@ meta:
     echo "Setup release build configuration for $GITHUB_TAG"
     
     ### Configure Bitcoin Global builder
-    git clone -b $GITHUB_TAG https://github.com/bitcoin-global/bitcoin-global.git ./tmp-bitcoin-global
+    git clone https://github.com/bitcoin-global/bitcoin-global.git ./tmp-bitcoin-global
     cp ./tmp-bitcoin-global/contrib/gitian-build.py ./gitian-build.py
     chmod u+x ./gitian-build.py
     rm -rf ./tmp-bitcoin-global
@@ -173,11 +173,15 @@ meta:
       git add .
       git checkout -B $GITHUB_TAG
       git commit -m "cd: Add $GITHUB_TAG detached sigs"
-      git push --set-upstream origin $GITHUB_TAG || git push
+      if [ -z "$SKIP_RELEASE_UPLOAD" ]; then
+        git push --set-upstream origin $GITHUB_TAG || git push
+      fi
 
       ### Push regular signatures
       cd ~/global.gitian.sigs
-      git push
+      if [ -z "$SKIP_RELEASE_UPLOAD" ]; then
+        git push
+      fi
 
       ### Remove debug packages
       rm -rf ~/bitcoin-binaries/$GITHUB_TAG/*debug*
@@ -220,4 +224,6 @@ meta:
       git checkout master && git fetch && git pull
       cp ~/tmp-tools/release-short.md ./doc/release-notes/release-notes-$GITHUB_TAG.md && git add ./doc/release-notes/release-notes-$GITHUB_TAG.md
       git diff-index --quiet HEAD || git commit -m "[docs] Adding release notes for $GITHUB_TAG"
-      git push
+      if [ -z "$SKIP_RELEASE_UPLOAD" ]; then
+        git push
+      fi

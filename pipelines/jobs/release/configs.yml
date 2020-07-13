@@ -2,16 +2,17 @@
 meta:
   overrides:
     bitcoin-global:
-      branch: "0.19.1-bootstrap"
+      branch: "0.19.2-testnet"
 
   release-params: &release-params
     params:
+      # Build config
+      SKIP_RELEASE_UPLOAD: true
       #========================================================
       # Service config
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
       GCLOUD_CREDENTIALS            : ((gcp.service-account))
       GCP_PROJECT                   : bitcoin-global-infra
-      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       GITHUB_TOKEN                  : ((git.token))
       SSH_PRIVATE_KEY               : ((ssh.private))
       SSH_PUBLIC_KEY                : ((ssh.public))
@@ -24,17 +25,18 @@ meta:
       RELEASE_KEY                   : ((cert.key))
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
-      #========================================================
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
+      #======================================================= = 
       # Monitoring
-      NETDATA_INFRA_ROOM            : eac6a6d5-154c-4e40-9fec-d29da19fb962
-      NETDATA_INFRA_TOKEN           : ((monitoring.infra-token))
-      #========================================================
+      NETDATA_INFRA_ROOM : eac6a6d5-154c-4e40-9fec-d29da19fb962
+      NETDATA_INFRA_TOKEN: ((monitoring.infra-token))
+      #======================================================= = 
       # Builder config
-      BUILDER_VM_NAME               : master-bitcoin-builder
-      BUILDER_VM_ZONE               : europe-west2-b
-      BUILDER_VM_SIZE               : n1-highcpu-8
-      BUILDER_CPUS                  : 8
-      BUILDER_RAM_MEMORY            : 6500
-      BUILDER_DISK_SIZE             : 60GB
-      BUILDER_DISK_TYPE             : pd-standard
-      BUILDER_SCRIPT_PATH           : /tmp/builder-startup.sh
+      BUILDER_VM_NAME    : master-bitcoin-builder
+      BUILDER_VM_ZONE    : europe-west2-b
+      BUILDER_VM_SIZE    : n1-highcpu-8
+      BUILDER_CPUS       : 8
+      BUILDER_RAM_MEMORY : 6500
+      BUILDER_DISK_SIZE  : 60GB
+      BUILDER_DISK_TYPE  : pd-standard
+      BUILDER_SCRIPT_PATH: /tmp/builder-startup.sh

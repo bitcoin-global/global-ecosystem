@@ -30,8 +30,8 @@
   # Node env config
   port   : 8222
   command: "-skiphardforkibd -bootstrap -daemon"
-  release: v0.19.1-bootstrap
-  version: 0.19.1
+  release: v0.19.2-testnet
+  version: 0.19.2
 ### ===========================================================
 ### =================================================== TESTNET
 - type: "test"
@@ -49,5 +49,5 @@
   # Node env config
   port   : 18222
   command: "-testnet -skiphardforkibd -bootstrap -daemon"
-  release: v0.19.1-bootstrap
-  version: 0.19.1
+  release: v0.19.2-testnet
+  version: 0.19.2
