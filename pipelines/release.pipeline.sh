@@ -16,7 +16,7 @@ spruce:
     regexp: ".*.(yml)"
   - with:
       files:
-      - resources/releases.bitcoin-global.yml
+      - resources/git.bitcoin-global.yml
       - resources/git.global-ecosystem.yml
       - resources/docker.builder.yml
   - with_all_in: jobs/release/
