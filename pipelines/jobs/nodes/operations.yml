@@ -183,16 +183,5 @@ meta:
       --bitglobd-pass ${BITCOIN_RPC_PASSWORD}
     SCRIPT
 
-    cat <<SERVICE > /etc/systemd/system/bitcoin_global.service
-    [Unit]
-    Description=Bitcoin Global script
-
-    [Service]
-    ExecStart=/binaries/bin/startup-script.sh
-
-    [Install]
-    WantedBy=multi-user.target
-    SERVICE
-
     chmod +x /binaries/bin/startup-script.sh
-    systemctl enable bitcoin_global
+    (crontab -l ; echo "@reboot /binaries/bin/startup-script.sh") | crontab -
