@@ -22,6 +22,8 @@ case $i in
     shift ;;
     -d=*|--domain=*)        DOMAIN_VALUE="${i#*=}"
     shift ;;
+    -p=*|--parent=*)        PARENT_VALUE="${i#*=}"
+    shift ;;
     -t=*|--type=*)          DOMAIN_TYPE="${i#*=}"
     shift ;;
     --ttl=*)                TTL_VALUE="${i#*=}"
@@ -37,6 +39,7 @@ warn "Adding ($DOMAIN_VALUE) to DNS records ($DNS_ZONE_NAME)..."
 
 DNS_RECORDS_LIST=$(gcloud dns record-sets list -z $DNS_ZONE_NAME --format json)
 PARENT_DOMAIN=$(sed 's/.*\.\(.*\..*\)/\1/' <<< $DOMAIN_VALUE)
+PARENT_DOMAIN=${PARENT_VALUE:-$PARENT_DOMAIN}
 TTL_VALUE=${TTL_VALUE:-300}
 
 # Add selected IP to DNS records

@@ -15,8 +15,13 @@
 - type: "main"
   # GCP Environment
   gcp:
-    machine_type  : "g1-small"
-    hdd_size      : "400GB"
+    machine_type: "g1-small"
+    hdd_size    : "400GB"
+    project     : "bitcoin-global-infra"
+    secrets     : 
+      email       : service-account-email
+      gcloud_creds: service-account
+  
     node_locations: 
     - us-central1-a
     - southamerica-east1-b
@@ -24,6 +29,7 @@
     - asia-south1-c
     - australia-southeast1-b
     - europe-west1-b
+
   # Monitoring
   monitoring:
     netdata_room: "b99a57d2-397a-4d9d-9655-3113b1c8ccef"
@@ -37,12 +43,18 @@
 - type: "test"
   # GCP Environment
   gcp:
-    machine_type  : "g1-small"
-    hdd_size      : "60GB"
+    machine_type: "g1-small"
+    hdd_size    : "60GB"
+    project     : "bitcoin-global-infra"
+    secrets     : 
+      email       : service-account-email
+      gcloud_creds: service-account
+  
     node_locations: 
     - us-central1-a
     - europe-west1-b
     - asia-east2-a
+  
   # Monitoring
   monitoring:
     netdata_room: "a9c21a87-65f9-4bd8-86b0-e9de831a597a"

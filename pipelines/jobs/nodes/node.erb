@@ -6,12 +6,9 @@ meta_plan:
     privileged: true
     params:
       # Secrets
-      SERVICE_ACCOUNT               : ((gcp.service-account-email))
-      GCLOUD_CREDENTIALS            : ((gcp.service-account))
       SSH_PRIVATE_KEY               : ((ssh.private))
       SSH_PUBLIC_KEY                : ((ssh.public))
       SSH_USER                      : ((ssh.username))
-      GCP_PROJECT                   : bitcoin-global-infra
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       TERM                          : xterm-256color
       OPERATION                     : <%= operation %>
@@ -65,6 +62,11 @@ jobs:
     config:
       platform: linux
       params: 
+        # GCP deployment configuration
+        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
+        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
+        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+
         GIT_FOLDER       : trigger
         GIT_BRANCH       : triggers
         GIT_REPO         : (( grab meta.global-nodes-repository ))
@@ -100,6 +102,11 @@ jobs:
     config:
       platform: linux
       params: 
+        # GCP deployment configuration
+        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
+        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
+        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+
         # Node config
         NODE_NAME     : <%= environment.type %>--<%= node %>-global-node
         NODE_ZONE     : <%= node %>
@@ -154,6 +161,11 @@ jobs:
       inputs:
         - name: global-nodes
       params: 
+        # GCP deployment configuration
+        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
+        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
+        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+
         TRIGGER_OPERATION: <%= operation %>
         TRIGGER_NET      : <%= environment.type %>
         SAVE_FILE        : <%= environment.type.upcase %>NET-NODES.md
