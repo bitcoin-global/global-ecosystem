@@ -9,33 +9,23 @@ meta:
       --disk-size="$MACHINE_DISK_SIZE" \
       --disk-type="$MACHINE_DISK_TYPE"
 
-    VM_REGION=${MACHINE_ZONE:0:-2}
-    ADDRESS_NAME=$MACHINE_NAME-address
-    EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION  --format json | jq '.address' | tr -d '"')
-
     global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
       --name="dev-bitcoin-global" \
       --dns="bitcoin-global.dev"
     global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
-      --parent="dnsseed.bitcoin-global.dev" --domain="vps.bitcoin-global.dev"
-    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="A" \
-      --parent="dnsseed.bitcoin-global.dev" --domain="$EXTERNAL_IP"
+      --parent="vps.bitcoin-global.dev" --domain="dnsseed.bitcoin-global.dev"
 
     global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
       --name="co-bitcoin-global" \
       --dns="bitcoin-global.co"
     global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
-      --parent="dnsseed.bitcoin-global.co" --domain="vps.bitcoin-global.co"
-    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="A" \
-      --parent="dnsseed.bitcoin-global.co" --domain="$EXTERNAL_IP"
+      --parent="vps.bitcoin-global.co" --domain="dnsseed.bitcoin-global.co"
 
     global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
       --name="io-bitcoin-global" \
       --dns="bitcoin-global.io"
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
-      --parent="dnsseed.bitcoin-global.io" --domain="vps.bitcoin-global.io"
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --parent="dnsseed.bitcoin-global.io" --domain="$EXTERNAL_IP"
+      --parent="vps.bitcoin-global.io" --domain="dnsseed.bitcoin-global.io"
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
     ### Wait until Build VM stable
@@ -56,6 +46,7 @@ meta:
     - (( grab meta.prepare_infra_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
+    - (( grab meta.install_required_pkg ))
     - shutdown --reboot 1 && exit
     - ENDSSH
 
@@ -67,11 +58,32 @@ meta:
       apt-get install -y \
         gnupg2 ca-certificates git software-properties-common \
         python3.6 sudo nano ruby make wget curl pigz \
-        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev
+        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev npm
+      npm install forever -g
 
       ### Install monitoring
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
       /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+
+  install_required_pkg: &install_required_pkg |
+    ### Install DNS seeder
+    git clone https://github.com/bitcoin-global/global-seeder.git /global-seeder
+    cd /global-seeder && make
+
+    ### ==============================
+    ### DNS SEED SERVICE CONFIGURATION
+    cat <<SCRIPT > /global-seeder/startup-script.sh
+    #!/bin/bash
+    forever stopall
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev
+    SCRIPT
+
+    chmod +x /global-seeder/startup-script.sh
+    /global-seeder/startup-script.sh
+    (crontab -l ; echo "@reboot /global-seeder/startup-script.sh") | crontab -
+
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key
