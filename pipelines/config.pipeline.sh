@@ -19,9 +19,12 @@ spruce:
       - resources/docker.builder.yml
       - resources/git.builder-ecosystem.yml
       - resources/git.pipeline-ecosystem.yml
+      - resources/git.global-ecosystem.yml
   - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
   - with_all_in: jobs/pipes/
+    regexp: ".*.(yml)"
+  - with_all_in: jobs/infra/
     regexp: ".*.(yml)"
   to: $tmppipeline
 

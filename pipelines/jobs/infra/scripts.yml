@@ -1,0 +1,88 @@
+---
+meta:
+  make_nodeinfra: &make_nodeinfra |
+    ### Deploy Builder VM on GCP
+    global-ecosystem/scripts/add-vm.sh \
+      --name="$MACHINE_NAME" \
+      --zone="$MACHINE_ZONE" \
+      --size="$MACHINE_SIZE" \
+      --disk-size="$MACHINE_DISK_SIZE" \
+      --disk-type="$MACHINE_DISK_TYPE"
+
+    VM_REGION=${MACHINE_ZONE:0:-2}
+    ADDRESS_NAME=$MACHINE_NAME-address
+    EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION  --format json | jq '.address' | tr -d '"')
+
+    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
+      --name="dev-bitcoin-global" \
+      --dns="bitcoin-global.dev"
+    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
+      --parent="dnsseed.bitcoin-global.dev" --domain="vps.bitcoin-global.dev"
+    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="A" \
+      --parent="dnsseed.bitcoin-global.dev" --domain="$EXTERNAL_IP"
+
+    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
+      --name="co-bitcoin-global" \
+      --dns="bitcoin-global.co"
+    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
+      --parent="dnsseed.bitcoin-global.co" --domain="vps.bitcoin-global.co"
+    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="A" \
+      --parent="dnsseed.bitcoin-global.co" --domain="$EXTERNAL_IP"
+
+    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
+      --name="io-bitcoin-global" \
+      --dns="bitcoin-global.io"
+    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
+      --parent="dnsseed.bitcoin-global.io" --domain="vps.bitcoin-global.io"
+    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      --parent="dnsseed.bitcoin-global.io" --domain="$EXTERNAL_IP"
+
+  wait_for_nodeinfra: &wait_for_nodeinfra |
+    ### Wait until Build VM stable
+    echo "Waiting until VM operational..."
+    counter=0
+    until gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT --command 'echo'; do
+        counter=$((counter+1))
+        if [[ "$counter" -gt 120 ]]; then
+            echo "Timed out!"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Success!"
+
+  setup_nodeinfra: &setup_nodeinfra
+    - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
+    - (( grab meta.prepare_infra_node ))
+    - (( grab meta.configure_git ))
+    - (( grab meta.import_gpg ))
+    - shutdown --reboot 1 && exit
+    - ENDSSH
+
+  prepare_infra_node: &prepare_infra_node |
+      ### Download system dependencies
+      echo "Prepare machine"
+      apt-get update
+      apt-get upgrade -y
+      apt-get install -y \
+        gnupg2 ca-certificates git software-properties-common \
+        python3.6 sudo nano ruby make wget curl pigz \
+        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev
+
+      ### Install monitoring
+      bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+      /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+
+  import_gpg: &import_gpg |
+    ### Import and unlock GPG key
+    echo "TEMP" > ~/temp.txt
+    mkdir -p ~/.gpg
+    echo "${RELEASE_CERT}" > ~/.gpg/cert.pem
+    echo "${RELEASE_KEY}" > ~/.gpg/cert_key.pem
+    echo "${GPG_PUBLIC}" | base64 -d > ~/.gpg/public.key
+    echo "${GPG_PRIVATE}" | base64 -d > ~/.gpg/private.key
+    echo "${GPG_SUBKEY}" | base64 -d > ~/.gpg/sub.key
+    gpg --import ~/.gpg/public.key
+    gpg --import ~/.gpg/private.key
+    gpg --import ~/.gpg/sub.key
+    rm -rf ~/temp*

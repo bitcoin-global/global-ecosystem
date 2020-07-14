@@ -20,7 +20,7 @@ meta:
     gpg --import ~/.gpg/sub.key
     rm -rf ~/temp*
 
-  prepare_builder_vm: &prepare_builder_vm |
+  prepare_MACHINE: &prepare_MACHINE |
     ### Download system dependencies
     echo "Prepare machine"
     apt-get update
@@ -81,17 +81,17 @@ meta:
   make_builder: &make_builder |
     ### Deploy Builder VM on GCP
     global-ecosystem/scripts/add-vm.sh \
-      --name="$BUILDER_VM_NAME" \
-      --zone="$BUILDER_VM_ZONE" \
-      --size="$BUILDER_VM_SIZE" \
-      --disk-size="$BUILDER_DISK_SIZE" \
-      --disk-type="$BUILDER_DISK_TYPE"
+      --name="$MACHINE_NAME" \
+      --zone="$MACHINE_ZONE" \
+      --size="$MACHINE_SIZE" \
+      --disk-size="$MACHINE_DISK_SIZE" \
+      --disk-type="$MACHINE_DISK_TYPE"
 
   wait_for_builder: &wait_for_builder |
     ### Wait until Build VM stable
     echo "Waiting until VM operational..."
     counter=0
-    until gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT --command 'echo'; do
+    until gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT --command 'echo'; do
         counter=$((counter+1))
         if [[ "$counter" -gt 120 ]]; then
             echo "Timed out!"
@@ -102,8 +102,8 @@ meta:
     echo "Success!"
 
   setup_builder: &setup_builder
-    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT <<ENDSSH
-    - (( grab meta.prepare_builder_vm ))
+    - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
+    - (( grab meta.prepare_MACHINE ))
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
     - (( grab meta.release_setup ))
@@ -112,7 +112,7 @@ meta:
     - ENDSSH
 
   builder_release: &builder_release
-    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT <<ENDSSH
+    - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
     - (( grab meta.release_build ))
@@ -120,7 +120,7 @@ meta:
     - ENDSSH
 
   builder_publish: &builder_publish
-    - gcloud beta compute ssh --zone $BUILDER_VM_ZONE $BUILDER_VM_NAME --project $GCP_PROJECT <<ENDSSH
+    - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
     - (( grab meta.publish_releases ))
@@ -129,13 +129,13 @@ meta:
 
   builder_stop: &builder_stop |
     global-ecosystem/scripts/remove-vm.sh \
-      --name="$BUILDER_VM_NAME" \
-      --zone="$BUILDER_VM_ZONE"
+      --name="$MACHINE_NAME" \
+      --zone="$MACHINE_ZONE"
 
   builder_destroy: &builder_destroy |
     global-ecosystem/scripts/remove-vm.sh \
-      --name="$BUILDER_VM_NAME" \
-      --zone="$BUILDER_VM_ZONE"
+      --name="$MACHINE_NAME" \
+      --zone="$MACHINE_ZONE"
       # We won't destroy it for now, just shutdown
       # --destroy
 

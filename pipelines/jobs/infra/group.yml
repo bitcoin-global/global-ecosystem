@@ -1,0 +1,6 @@
+---
+groups:
+- name: infra
+  jobs:
+  - deploy-shared
+  

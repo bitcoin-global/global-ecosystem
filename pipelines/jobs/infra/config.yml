@@ -1,13 +1,7 @@
 ---
 meta:
-  overrides:
-    bitcoin-global:
-      branch: "0.19.2-testnet"
-
-  release-params: &release-params
+  config-params: &config-params
     params:
-      # Build config
-      SKIP_RELEASE_UPLOAD: true
       #========================================================
       # Service config
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
@@ -26,17 +20,15 @@ meta:
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
-      #======================================================= = 
+      #=======================================================  
       # Monitoring
       NETDATA_INFRA_ROOM : eac6a6d5-154c-4e40-9fec-d29da19fb962
       NETDATA_INFRA_TOKEN: ((monitoring.infra-token))
-      #======================================================= = 
-      # Builder config
-      MACHINE_NAME       : master-bitcoin-builder
-      MACHINE_ZONE       : europe-west2-b
-      MACHINE_SIZE       : n1-highcpu-8
-      BUILDER_CPUS       : 8
-      BUILDER_RAM_MEMORY : 6500
-      MACHINE_DISK_SIZE  : 60GB
+      #======================================================== 
+      # Node config
+      MACHINE_NAME       : shared-infra
+      MACHINE_ZONE       : europe-west1-b
+      MACHINE_SIZE       : g1-small
+      MACHINE_DISK_SIZE  : 20GB
       MACHINE_DISK_TYPE  : pd-standard
       MACHINE_SCRIPT_PATH: /tmp/builder-startup.sh
