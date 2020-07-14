@@ -65,7 +65,7 @@ jobs:
         # GCP deployment configuration
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+        GCP_PROJECT       : <%= environment.gcp.project %>
 
         GIT_FOLDER       : trigger
         GIT_BRANCH       : triggers
@@ -105,7 +105,7 @@ jobs:
         # GCP deployment configuration
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+        GCP_PROJECT       : <%= environment.gcp.project %>
 
         # Node config
         NODE_NAME     : <%= environment.type %>--<%= node %>-global-node
@@ -164,7 +164,7 @@ jobs:
         # GCP deployment configuration
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : ((gcp.<%= environment.gcp.project %>))
+        GCP_PROJECT       : <%= environment.gcp.project %>
 
         TRIGGER_OPERATION: <%= operation %>
         TRIGGER_NET      : <%= environment.type %>
