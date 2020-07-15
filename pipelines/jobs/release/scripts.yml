@@ -199,7 +199,7 @@ meta:
       RELEASE_DATA=\$(git --git-dir ~/bitcoin-global/.git log \$FROM_COMMIT..HEAD --no-merges \
                   --pretty=format:'* **[\`%h\`](https://github.com/bitcoin-global/bitcoin-global/commit/%H)**  %s' \
                   -i -E --grep=".*: .*")
-      COMMITTERS=\$(git --git-dir ~/bitcoin-global/.git log --format="* %an" \$FROM_COMMIT..HEAD | uniq | grep -i -E -v "bitcoin-global-bot" )
+      COMMITTERS=\$(git --git-dir ~/bitcoin-global/.git log --format="* %an" \$FROM_COMMIT..HEAD | sort | uniq | grep -i -E -v "bitcoin-global-bot" )
       DATE=\$(date '+%Y-%m-%d')
 
       echo -e "## Release v$GITHUB_TAG (\$DATE)\n\n" > release.md
