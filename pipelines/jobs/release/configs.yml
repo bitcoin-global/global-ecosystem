@@ -2,12 +2,12 @@
 meta:
   overrides:
     bitcoin-global:
-      branch: "0.19.2-testnet"
+      branch: "0.19.2"
 
   release-params: &release-params
     params:
       # Build config
-      SKIP_RELEASE_UPLOAD: true
+      SKIP_RELEASE_UPLOAD: false
       #========================================================
       # Service config
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
