@@ -15,7 +15,7 @@
 - type: "main"
   # GCP Environment
   gcp:
-    machine_type: "g1-small"
+    machine_type: "n1-standard-1"
     hdd_size    : "400GB"
     project     : "bitcoin-global-mainnet"
     secrets     : 
@@ -46,7 +46,7 @@
 - type: "test"
   # GCP Environment
   gcp:
-    machine_type: "g1-small"
+    machine_type: "n1-standard-1"
     hdd_size    : "60GB"
     project     : "bitcoin-global-test-net"
     secrets     : 
