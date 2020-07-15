@@ -13,19 +13,25 @@ meta:
       --name="dev-bitcoin-global" \
       --dns="bitcoin-global.dev"
     global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.dev" --domain="dnsseed.bitcoin-global.dev"
+      --parent="vps.bitcoin-global.dev" --domain="dnsseed.bitcoin-global.dev" --ttl=21600
+    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
+      --parent="vps.bitcoin-global.dev" --domain="test-dnsseed.bitcoin-global.dev" --ttl=21600
 
     global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
       --name="co-bitcoin-global" \
       --dns="bitcoin-global.co"
     global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.co" --domain="dnsseed.bitcoin-global.co"
+      --parent="vps.bitcoin-global.co" --domain="dnsseed.bitcoin-global.co" --ttl=21600
+    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
+      --parent="vps.bitcoin-global.co" --domain="test-dnsseed.bitcoin-global.co" --ttl=21600
 
     global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
       --name="io-bitcoin-global" \
       --dns="bitcoin-global.io"
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.io" --domain="dnsseed.bitcoin-global.io"
+      --parent="vps.bitcoin-global.io" --domain="dnsseed.bitcoin-global.io" --ttl=21600
+    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
+      --parent="vps.bitcoin-global.io" --domain="test-dnsseed.bitcoin-global.io" --ttl=21600
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
     ### Wait until Build VM stable
@@ -78,6 +84,10 @@ meta:
     forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io
     forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co
     forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev
+    
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io --testnet
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co --testnet
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev --testnet
     SCRIPT
 
     chmod +x /global-seeder/startup-script.sh

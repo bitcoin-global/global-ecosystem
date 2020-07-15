@@ -37,13 +37,13 @@ kill_if_empty "--name" $DNS_ZONE_NAME
 
 warn "Adding ($DOMAIN_VALUE) to DNS records ($DNS_ZONE_NAME)..."
 
-DNS_RECORDS_LIST=$(gcloud dns record-sets list -z $DNS_ZONE_NAME --format json)
+DNS_RECORDS_LIST=$(gcloud dns record-sets list -z $DNS_ZONE_NAME --format json | jq ".[] | select(.name==\"$DOMAIN_VALUE.\")")
 PARENT_DOMAIN=$(sed 's/.*\.\(.*\..*\)/\1/' <<< $DOMAIN_VALUE)
 PARENT_DOMAIN=${PARENT_VALUE:-$PARENT_DOMAIN}
 TTL_VALUE=${TTL_VALUE:-300}
 
 # Add selected IP to DNS records
-if grep -q "$DOMAIN_VALUE" <<<"$DNS_RECORDS_LIST"; then
+if [ ! -z "$DNS_RECORDS_LIST" ]; then
     warn "Data ($DOMAIN_VALUE) already in DNS records, skipping..."
 else
     warn "Data ($DOMAIN_VALUE) not in DNS records, adding..."
