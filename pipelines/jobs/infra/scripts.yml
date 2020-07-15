@@ -64,14 +64,20 @@ meta:
       apt-get install -y \
         gnupg2 ca-certificates git software-properties-common \
         python3.6 sudo nano ruby make wget curl pigz \
-        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev npm
-      npm install forever -g
+        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev
 
       ### Install monitoring
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
       /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
   install_required_pkg: &install_required_pkg |
+    ### Install aditional requirements
+    apt-get autoremove -y
+    apt-get install -y nodejs-dev node-gyp libssl1.0-dev
+    apt-get install -y build-essential libboost-all-dev libssl-dev
+    apt-get install -f -y npm
+    npm install forever -g
+
     ### Install DNS seeder
     git clone https://github.com/bitcoin-global/global-seeder.git /global-seeder
     cd /global-seeder && make
@@ -81,13 +87,13 @@ meta:
     cat <<SCRIPT > /global-seeder/startup-script.sh
     #!/bin/bash
     forever stopall
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co
+    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev
     
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io --testnet
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co --testnet
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev --testnet
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io --testnet
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co --testnet
+    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
     SCRIPT
 
     chmod +x /global-seeder/startup-script.sh
