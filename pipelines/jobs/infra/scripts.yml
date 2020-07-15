@@ -47,7 +47,7 @@ meta:
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
     - (( grab meta.install_required_pkg ))
-    - shutdown --reboot 1 && exit
+    - exit
     - ENDSSH
 
   prepare_infra_node: &prepare_infra_node |
