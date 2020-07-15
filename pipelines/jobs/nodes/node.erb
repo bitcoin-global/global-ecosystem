@@ -116,14 +116,17 @@ jobs:
         NODE_DISK_TYPE: pd-standard
 
         # Bitcoin config
-        BITCOIN_ENTRYPOINT  : <%= environment.command %>
-        BITCOIN_NETWORK_TYPE: <%= environment.type %>
-        BITCOIN_PORT        : <%= environment.port %>
-        BITCOIN_DATA_DIR    : /bitcoin-global
-        BITCOIN_VERSION     : <%= environment.version %>
-        BITCOIN_RELEASE     : <%= environment.release %>
-        BITCOIN_RPC_USERNAME: admin
-        BITCOIN_RPC_PASSWORD: ((rpc.password))
+        BITCOIN_ENTRYPOINT       : <%= environment.command %>
+        BITCOIN_UPDATE_ENTRYPOINT: <%= environment.command_update %>
+        BITCOIN_NETWORK_TYPE     : <%= environment.type %>
+        BITCOIN_PORT             : <%= environment.port %>
+        BITCOIN_DATA_DIR         : /bitcoin-global
+        BITCOIN_VERSION          : <%= environment.version %>
+        BITCOIN_RELEASE          : <%= environment.release %>
+        BITCOIN_UPDATE_VERSION   : <%= environment.update_version %>
+        BITCOIN_UPDATE_RELEASE   : <%= environment.update_release %>
+        BITCOIN_RPC_USERNAME     : admin
+        BITCOIN_RPC_PASSWORD     : ((rpc.password))
     
         # Monitoring
         NETDATA_INFRA_ROOM : <%= environment.monitoring.netdata_room %>

@@ -89,7 +89,7 @@ meta:
   update_bitcoin: &update_bitcoin |
     ### Updating Bitcoin Global
     ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v ${BITCOIN_VERSION} -r ${BITCOIN_RELEASE} \
+      -v ${BITCOIN_UPDATE_VERSION} -r ${BITCOIN_UPDATE_RELEASE} \
       -t /binaries -d ${BITCOIN_DATA_DIR}
 
   run_bitcoin: &run_bitcoin |
@@ -100,6 +100,16 @@ meta:
 
     ### Run Bitcoin Global
     /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
+
+  update_run_bitcoin: &update_run_bitcoin |
+    ### Stop Bitcoin Global
+    /binaries/bin/bitglob-cli stop || echo "mainnet: Already shutdown"
+    /binaries/bin/bitglob-cli -testnet stop || echo "testnet: Already shutdown"
+    sleep 1m
+
+    ### Run Bitcoin Global
+    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_UPDATE_ENTRYPOINT
+
 
   install_node: &install_node
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
@@ -120,7 +130,7 @@ meta:
     - (( grab meta.post_git_ops ))
     - (( grab meta.update_bitcoin ))
     - (( grab meta.generate_env_config ))
-    - (( grab meta.run_bitcoin ))
+    - (( grab meta.update_run_bitcoin ))
     - (( grab meta.post_operations ))
     - exit
     - EOF
