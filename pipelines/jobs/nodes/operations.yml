@@ -3,6 +3,7 @@ meta:
   # Git and GCloud already configured for each operation
   perform_deploy: &perform_deploy
   - (( grab meta.make_node ))
+  - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.install_node ))
 
@@ -14,11 +15,13 @@ meta:
 
   perform_update: &perform_update
   - (( grab meta.make_node ))
+  - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.update_node ))
 
   perform_electrum: &perform_electrum
   - (( grab meta.make_node ))
+  - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.deploy_electrum ))
 
@@ -73,13 +76,20 @@ meta:
 
     ### Get IP
     VM_REGION=${NODE_ZONE:0:-2}
+    IN_LOCATION=$(echo "$NODE_ZONE" | cut -f1 -d"-")
     ADDRESS_NAME=$NODE_NAME-address
     EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION --format json | jq '.address' | tr -d '"')
     
+    ## LOGIN TO INFRA PROJECT
+    ### Configure Google Cloud authentication
+    echo "${GCLOUD_INFRA_CREDENTIALS}" > $GOOGLE_APPLICATION_CREDENTIALS
+    gcloud auth activate-service-account \
+      $SERVICE_INFRA_ACCOUNT --key-file=${GOOGLE_APPLICATION_CREDENTIALS} --project=$GCP_INFRA_PROJECT
+
     ### ================== Add Explorer server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --value="${EXTERNAL_IP}" --domain="explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
     
     ### Parent A record
@@ -90,7 +100,7 @@ meta:
     ### ================== Add ElectrumX server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --value="${EXTERNAL_IP}" --domain="electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
     
     ### Parent A record
@@ -244,6 +254,7 @@ meta:
   electrum_config: &electrum_config |
     ### ==============================
     ### Install Electrum
+    rm -rf ~/.electrumx-installer/
     wget https://raw.githubusercontent.com/bauerj/electrumx-installer/master/bootstrap.sh -O - | \
       bash -s - \
       --leveldb \

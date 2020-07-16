@@ -25,15 +25,15 @@ meta:
 
     for VM_ZONE in $(echo ${NODE_ZONES} | sed "s/,/ /g")
     do
-      VM_REGION=${VM_ZONE:0:-2}
+      IN_LOCATION=$(echo "$VM_ZONE" | cut -f1 -d"-")
       VM_DATA=$(gcloud beta compute instances describe $TRIGGER_NET--$VM_ZONE-global-node --zone $VM_ZONE --format json)
       name=$(echo ${VM_DATA} | jq .name | tr -d '"')
       public_ip=$(echo ${VM_DATA} | jq .networkInterfaces[0].accessConfigs[0].natIP | tr -d '"')
       status=$(echo ${VM_DATA} | jq .status | tr -d '"')
       DATA="\`$name\`"
       DATA="$DATA | [$public_ip]($public_ip)"
-      DATA="$DATA | [http://electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
-      DATA="$DATA | [http://explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)"
+      DATA="$DATA | [http://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)"
+      DATA="$DATA | [http://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
       DATA="$DATA | $status"
       echo "$DATA" >> $SAVE_FILE
     done
