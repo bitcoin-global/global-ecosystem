@@ -20,19 +20,12 @@ meta:
     DOMAINS=dev,co,io
     for DOMAIN in $(echo ${DOMAINS} | sed "s/,/ /g")
     do
-      global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
-        --name="main-${DOMAIN}-bitcoin-global" \
-        --dns="dnsseed.bitcoin-global.${DOMAIN}"
-      global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
-        --name="test-${DOMAIN}-bitcoin-global" \
-        --dns="test-dnsseed.bitcoin-global.${DOMAIN}"
-
       global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="A" \
         --value="${EXTERNAL_IP}" --domain="vps.bitcoin-global.${DOMAIN}"
-      global-ecosystem/scripts/dns-record.sh --name="main-${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}" --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl=21600
-      global-ecosystem/scripts/dns-record.sh --name="test-${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}" --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl=21600
+      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}" --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}" --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
     done
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
