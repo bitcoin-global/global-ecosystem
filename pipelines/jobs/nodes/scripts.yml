@@ -20,8 +20,8 @@ meta:
     ### Update nodelist data
     cd ./global-nodes
     echo "Updating node list"
-    echo "Instance name | Public IP address | ElectrumX | Explorer | Status" > $SAVE_FILE
-    echo "--- | --- | ---" >> $SAVE_FILE
+    echo "Instance name | Public IP | ElectrumX | Explorer | Status" > $SAVE_FILE
+    echo "--- | --- | --- | --- | ---" >> $SAVE_FILE
 
     for VM_ZONE in $(echo ${NODE_ZONES} | sed "s/,/ /g")
     do

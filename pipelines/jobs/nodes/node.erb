@@ -66,6 +66,7 @@ jobs:
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
         GCP_PROJECT       : <%= environment.gcp.project %>
+        GCP_INFRA_PROJECT : bitcoin-global-infra
 
         GIT_FOLDER       : trigger
         GIT_BRANCH       : triggers
@@ -106,6 +107,7 @@ jobs:
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
         GCP_PROJECT       : <%= environment.gcp.project %>
+        GCP_INFRA_PROJECT : bitcoin-global-infra
 
         # Node config
         NODE_NAME     : <%= environment.type %>--<%= node %>-global-node
@@ -168,6 +170,7 @@ jobs:
         SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
         GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
         GCP_PROJECT       : <%= environment.gcp.project %>
+        GCP_INFRA_PROJECT : bitcoin-global-infra
 
         TRIGGER_OPERATION: <%= operation %>
         TRIGGER_NET      : <%= environment.type %>
