@@ -79,20 +79,24 @@ meta:
     ### ================== Add Explorer server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
+      --value="${EXTERNAL_IP}" --domain="explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --project="${GCP_INFRA_PROJECT}"
     
     ### Parent A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
+      --value="${EXTERNAL_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --project="${GCP_INFRA_PROJECT}"
 
     ### ================== Add ElectrumX server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
+      --value="${EXTERNAL_IP}" --domain="electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --project="${GCP_INFRA_PROJECT}"
     
     ### Parent A record
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
+      --value="${EXTERNAL_IP}" --domain="electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --project="${GCP_INFRA_PROJECT}"
 
   wait_for_node: &wait_for_node |
     ### Loop until ready
