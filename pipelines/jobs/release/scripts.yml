@@ -174,13 +174,13 @@ meta:
       git add .
       git checkout -B $GITHUB_TAG
       git commit -m "cd: Add $GITHUB_TAG detached sigs"
-      if [[ "$SKIP_RELEASE_UPLOAD" == "true" ]]; then
+      if [[ "$UPLOAD_RELEASE_CONFIGS" == "true" ]]; then
         git push --set-upstream origin $GITHUB_TAG || git push
       fi
 
       ### Push regular signatures
       cd ~/global.gitian.sigs
-      if [[ "$SKIP_RELEASE_UPLOAD" == "true" ]]; then
+      if [[ "$UPLOAD_RELEASE_CONFIGS" == "true" ]]; then
         git push
       fi
 
@@ -225,6 +225,6 @@ meta:
       git checkout master && git fetch && git pull
       cp ~/tmp-tools/release-short.md ./doc/release-notes/release-notes-$GITHUB_TAG.md && git add ./doc/release-notes/release-notes-$GITHUB_TAG.md
       git diff-index --quiet HEAD || git commit -m "[docs] Adding release notes for $GITHUB_TAG"
-      if [[ "$SKIP_RELEASE_UPLOAD" == "true" ]]; then
+      if [[ "$UPLOAD_RELEASE_CONFIGS" == "true" ]]; then
         git push
       fi

@@ -7,7 +7,7 @@ meta:
   release-params: &release-params
     params:
       # Build config
-      SKIP_RELEASE_UPLOAD: false
+      UPLOAD_RELEASE_CONFIGS: true
       #========================================================
       # Service config
       SERVICE_ACCOUNT               : ((gcp.service-account-email))
