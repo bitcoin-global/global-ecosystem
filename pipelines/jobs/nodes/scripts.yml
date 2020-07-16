@@ -37,6 +37,10 @@ meta:
       DATA="$DATA | $status"
       echo "$DATA" >> $SAVE_FILE
     done
+
+    echo -e "\nMain servers:\n" >> $SAVE_FILE
+    echo -e "* **ElectrumX** (in Europe) - [http://electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)" >> $SAVE_FILE
+    echo -e "* **Explorer** (in Europe) - [http://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
     echo -e "\n\nLast update: \`$timestamp\`" >> $SAVE_FILE
 
     # Sync changes

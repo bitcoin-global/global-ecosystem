@@ -184,11 +184,12 @@ jobs:
         GCLOUD_INFRA_CREDENTIALS: ((gcp.service-account))
         GCP_INFRA_PROJECT       : bitcoin-global-infra
 
-        TRIGGER_OPERATION: <%= operation %>
-        TRIGGER_NET      : <%= environment.type %>
-        SAVE_FILE        : <%= environment.type.upcase %>NET-NODES.md
-        NODE_ZONES       : <%= environment.gcp.node_locations.join(',')  %>
-        COMMIT_MESSAGE   : "[<%= environment.type %>net] Update node information for <%= operation %> action"
+        BITCOIN_NETWORK_TYPE: <%= environment.type %>
+        TRIGGER_OPERATION   : <%= operation %>
+        TRIGGER_NET         : <%= environment.type %>
+        SAVE_FILE           : <%= environment.type.upcase %>NET-NODES.md
+        NODE_ZONES          : <%= environment.gcp.node_locations.join(',')  %>
+        COMMIT_MESSAGE      : "[<%= environment.type %>net] Update node information for <%= operation %> action"
       run:
         user: root
         path: bash
