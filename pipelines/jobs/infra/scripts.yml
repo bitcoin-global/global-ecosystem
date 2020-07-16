@@ -7,31 +7,33 @@ meta:
       --zone="$MACHINE_ZONE" \
       --size="$MACHINE_SIZE" \
       --disk-size="$MACHINE_DISK_SIZE" \
-      --disk-type="$MACHINE_DISK_TYPE"
+      --disk-type="$MACHINE_DISK_TYPE" \
+      --tags="bitcoin-infra" \
+      --static-ip
 
-    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
-      --name="dev-bitcoin-global" \
-      --dns="bitcoin-global.dev"
-    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.dev" --domain="dnsseed.bitcoin-global.dev" --ttl=21600
-    global-ecosystem/scripts/dns-record.sh --name="dev-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.dev" --domain="test-dnsseed.bitcoin-global.dev" --ttl=21600
+    ### Get IP
+    VM_REGION=${MACHINE_ZONE:0:-2}
+    ADDRESS_NAME=$MACHINE_NAME-address
+    EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION --format json | jq '.address' | tr -d '"')
+    
+    ### Create zones
+    DOMAINS=dev,co,io
+    for DOMAIN in $(echo ${DOMAINS} | sed "s/,/ /g")
+    do
+      global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
+        --name="main-${DOMAIN}-bitcoin-global" \
+        --dns="dnsseed.bitcoin-global.${DOMAIN}"
+      global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
+        --name="test-${DOMAIN}-bitcoin-global" \
+        --dns="test-dnsseed.bitcoin-global.${DOMAIN}"
 
-    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
-      --name="co-bitcoin-global" \
-      --dns="bitcoin-global.co"
-    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.co" --domain="dnsseed.bitcoin-global.co" --ttl=21600
-    global-ecosystem/scripts/dns-record.sh --name="co-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.co" --domain="test-dnsseed.bitcoin-global.co" --ttl=21600
-
-    global-ecosystem/scripts/setup-dns.sh --skip-gcp-ip \
-      --name="io-bitcoin-global" \
-      --dns="bitcoin-global.io"
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.io" --domain="dnsseed.bitcoin-global.io" --ttl=21600
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="NS" \
-      --parent="vps.bitcoin-global.io" --domain="test-dnsseed.bitcoin-global.io" --ttl=21600
+      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="A" \
+        --value="${EXTERNAL_IP}" --domain="vps.bitcoin-global.${DOMAIN}"
+      global-ecosystem/scripts/dns-record.sh --name="main-${DOMAIN}-bitcoin-global" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}" --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl=21600
+      global-ecosystem/scripts/dns-record.sh --name="test-${DOMAIN}-bitcoin-global" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}" --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl=21600
+    done
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
     ### Wait until Build VM stable

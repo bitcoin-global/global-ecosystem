@@ -33,7 +33,7 @@ meta:
       #======================================================= = 
       # Builder config
       MACHINE_NAME       : master-bitcoin-builder
-      MACHINE_ZONE       : europe-west2-b
+      MACHINE_ZONE       : us-central1-a
       MACHINE_SIZE       : n1-highcpu-8
       BUILDER_CPUS       : 8
       BUILDER_RAM_MEMORY : 6500
