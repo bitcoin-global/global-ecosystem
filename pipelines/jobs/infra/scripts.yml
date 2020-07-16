@@ -23,9 +23,9 @@ meta:
       global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="A" \
         --value="${EXTERNAL_IP}" --domain="vps.bitcoin-global.${DOMAIN}"
       global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}" --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+        --value="vps.bitcoin-global.${DOMAIN}." --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
       global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}" --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+        --value="vps.bitcoin-global.${DOMAIN}." --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
     done
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
@@ -79,7 +79,7 @@ meta:
 
     ### ==============================
     ### DNS SEED SERVICE CONFIGURATION
-    cat <<SCRIPT > /global-seeder/startup-script.sh
+    cat <<SCRIPT > /etc/init.d/dnsseeder-startup.sh
     #!/bin/bash
     forever stopall
     forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io
@@ -90,11 +90,10 @@ meta:
     forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co --testnet
     forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
     SCRIPT
-
-    chmod +x /global-seeder/startup-script.sh
-    /global-seeder/startup-script.sh
-    (crontab -l ; echo "@reboot /global-seeder/startup-script.sh") | crontab -
-
+    
+    update-rc.d /etc/init.d/dnsseeder-startup.sh defaults
+    chmod +x /etc/init.d/dnsseeder-startup.sh
+    /etc/init.d/dnsseeder-startup.sh
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key

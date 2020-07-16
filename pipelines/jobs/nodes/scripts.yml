@@ -20,16 +20,22 @@ meta:
     ### Update nodelist data
     cd ./global-nodes
     echo "Updating node list"
-    echo "Instance name | Public IP address | Status" > $SAVE_FILE
+    echo "Instance name | Public IP address | ElectrumX | Explorer | Status" > $SAVE_FILE
     echo "--- | --- | ---" >> $SAVE_FILE
 
     for VM_ZONE in $(echo ${NODE_ZONES} | sed "s/,/ /g")
     do
+      VM_REGION=${VM_ZONE:0:-2}
       VM_DATA=$(gcloud beta compute instances describe $TRIGGER_NET--$VM_ZONE-global-node --zone $VM_ZONE --format json)
       name=$(echo ${VM_DATA} | jq .name | tr -d '"')
       public_ip=$(echo ${VM_DATA} | jq .networkInterfaces[0].accessConfigs[0].natIP | tr -d '"')
       status=$(echo ${VM_DATA} | jq .status | tr -d '"')
-      echo "\`$name\` | $public_ip | $status" >> $SAVE_FILE
+      DATA="\`$name\`"
+      DATA="$DATA | [$public_ip]($public_ip)"
+      DATA="$DATA | [http://electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://electrumx.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
+      DATA="$DATA | [http://explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://explorer.${VM_REGION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)"
+      DATA="$DATA | $status"
+      echo "$DATA" >> $SAVE_FILE
     done
     echo -e "\n\nLast update: \`$timestamp\`" >> $SAVE_FILE
 

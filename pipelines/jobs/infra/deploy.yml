@@ -3,7 +3,7 @@
 meta_plan:
   provision-config: &provision-config
     image: builder
-    timeout: 20m
+    timeout: 1h
     privileged: true
     <: (( inject meta.config-params ))
 
