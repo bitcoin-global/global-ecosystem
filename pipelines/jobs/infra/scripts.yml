@@ -16,6 +16,10 @@ meta:
     ADDRESS_NAME=$MACHINE_NAME-address
     EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION --format json | jq '.address' | tr -d '"')
     
+    # Add to .io
+    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      --value="${EXTERNAL_IP}" --domain="@.bitcoin-global.io"
+
     ### Create zones
     DOMAINS=dev,co,io
     for DOMAIN in $(echo ${DOMAINS} | sed "s/,/ /g")
@@ -51,6 +55,13 @@ meta:
     - exit
     - ENDSSH
 
+  setup_io: &setup_io
+    - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
+    - (( grab meta.configure_git ))
+    - (( grab meta.deploy-landing-page ))
+    - exit
+    - ENDSSH
+
   prepare_infra_node: &prepare_infra_node |
       ### Download system dependencies
       echo "Prepare machine"
@@ -82,18 +93,38 @@ meta:
     cat <<SCRIPT > /etc/init.d/dnsseeder-startup.sh
     #!/bin/bash
     forever stopall
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co
+    #forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io
+    #forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co
     forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev
     
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io --testnet
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co --testnet
+    #forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io --testnet
+    #forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co --testnet
     forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
     SCRIPT
     
-    update-rc.d /etc/init.d/dnsseeder-startup.sh defaults
     chmod +x /etc/init.d/dnsseeder-startup.sh
-    /etc/init.d/dnsseeder-startup.sh
+
+    cat <<SERVICE > /etc/systemd/system/dnsseeder.service
+    [Unit]
+    Description=DNSSeeder
+    After=network.target
+
+    [Service]
+    ExecStart=/etc/init.d/dnsseeder-startup.sh
+    User=root
+    LimitNOFILE=8192
+    TimeoutStopSec=30min
+    Restart=always
+    RestartSec=3
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+
+    ### ==============================
+    systemctl enable dnsseeder
+    systemctl daemon-reload
+    systemctl start dnsseeder
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key
@@ -108,3 +139,91 @@ meta:
     gpg --import ~/.gpg/private.key
     gpg --import ~/.gpg/sub.key
     rm -rf ~/temp*
+
+  deploy-landing-page: &deploy-landing-page |
+    ### Install requirements
+    apt update -y && apt upgrade -y
+    apt install -y git python-software-properties software-properties-common nginx gcc g++ make python3-pip
+    add-apt-repository ppa:certbot/certbot -y
+    apt update -y && apt upgrade -y
+    apt install -y python-certbot-nginx
+    python3 -m pip install cffi
+
+    ### Prepare
+    cd /var/www/
+    rm -rf ./bitcoin-global.io
+    git clone https://github.com/bitcoin-global/bitcoin-global.io.git ./bitcoin-global.io
+
+    ### Get certificates
+    if [ ! -f /etc/letsencrypt/live/bitcoin-global.io/cert.pem ]; then
+      certbot --nginx --agree-tos -n \
+        -d bitcoin-global.io \
+        -m admin@bitcoin-global.io
+    fi
+    
+    ### Add configuration files
+    cat <<CERTS > /etc/nginx/sites-available/bitcoin-global.io.conf
+    server {
+      server_name bitcoin-global.io;
+      listen 80;
+      #listen [::]:80 ipv6only=on;
+    
+      location / {
+        return 301 https://bitcoin-global.io$request_uri;
+      }
+    }
+    
+    server {
+      server_name bitcoin-global.io;
+      listen 443 ssl http2;
+      #listen [::]:443 ssl http2 ipv6only=on;
+
+      ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+      ssl_ciphers 'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH';
+      ssl_prefer_server_ciphers on;
+      ssl_session_cache shared:SSL:10m;
+      ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+      ssl_certificate     /etc/letsencrypt/live/bitcoin-global.io/cert.pem;
+      ssl_certificate_key /etc/letsencrypt/live/bitcoin-global.io/privkey.pem;
+
+      location / {
+        root /var/www/bitcoin-global.io;
+        index index.$geo.html index.htm index.html;
+        try_files $uri $uri/ $uri.html =404;
+      }
+
+      error_page 404 /404.html;
+      location = /404.html {
+        root /var/www/bitcoin-global.io;
+        internal;
+      }
+
+      error_page 500 502 503 504 /50x.html;
+      location = /50x.html {
+        root /var/www/bitcoin-global.io;
+        internal;
+      }
+
+      location ~* \.(jpg|jpeg|png|gif|ico)$ {
+        expires 30d;
+      }
+      location ~* \.(css|js)$ {
+        expires 7d;
+      }
+    }
+    CERTS
+
+    cd /etc/ssl/certs
+    if [ ! -f dhparam.pem ]; then
+      openssl dhparam -out dhparam.pem 4096
+    fi
+
+    ### Activate service
+    ln -s /etc/nginx/sites-available/bitcoin-global.io.conf /etc/nginx/sites-enabled/
+    rm -rf /etc/nginx/sites-enabled/default
+    rm -rf /etc/nginx/sites-available/default
+    fuser -k 80/tcp
+    fuser -k 443/tcp
+    
+    service nginx restart

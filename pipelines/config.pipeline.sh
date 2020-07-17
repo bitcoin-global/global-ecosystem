@@ -20,6 +20,7 @@ spruce:
       - resources/git.builder-ecosystem.yml
       - resources/git.pipeline-ecosystem.yml
       - resources/git.global-ecosystem.yml
+      - resources/git.global-io.yml
   - with_all_in: jobs/builder/
     regexp: ".*.(yml)"
   - with_all_in: jobs/pipes/

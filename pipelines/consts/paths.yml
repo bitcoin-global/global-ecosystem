@@ -9,3 +9,4 @@ meta:
   global-nodes-repository: https://github.com/bitcoin-global/global-nodes.git
   global-explorer-repository: https://github.com/bitcoin-global/explorer.git
   global-explorer-repository: https://github.com/bitcoin-global/explorer.git
+  global-io-repository: https://github.com/bitcoin-global/bitcoin-global.io.git

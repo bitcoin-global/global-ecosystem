@@ -1,0 +1,10 @@
+---
+resources:
+- name: global-io
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.global-io-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: master

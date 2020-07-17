@@ -1,6 +1,6 @@
 ---
 groups:
-- name: infra
+- name: tools
   jobs:
-  - deploy-shared
-  
+  - deploy-dns-seeds
+  - deploy-landing-page
