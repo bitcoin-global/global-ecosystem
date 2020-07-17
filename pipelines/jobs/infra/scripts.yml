@@ -162,17 +162,17 @@ meta:
     fi
     
     ### Add configuration files
-    cat <<CERTS > /etc/nginx/sites-available/bitcoin-global.io.conf
+    cat <<'CERTS' > /etc/nginx/sites-available/bitcoin-global.io.conf
     server {
       server_name bitcoin-global.io;
       listen 80;
       #listen [::]:80 ipv6only=on;
-    
+
       location / {
         return 301 https://bitcoin-global.io$request_uri;
       }
     }
-    
+
     server {
       server_name bitcoin-global.io;
       listen 443 ssl http2;
@@ -187,10 +187,11 @@ meta:
       ssl_certificate     /etc/letsencrypt/live/bitcoin-global.io/cert.pem;
       ssl_certificate_key /etc/letsencrypt/live/bitcoin-global.io/privkey.pem;
 
+      root /var/www/bitcoin-global.io;
+      index index.html;
+
       location / {
-        root /var/www/bitcoin-global.io;
-        index index.$geo.html index.htm index.html;
-        try_files $uri $uri/ $uri.html =404;
+        try_files $uri $uri/ =404;
       }
 
       error_page 404 /404.html;
@@ -225,5 +226,5 @@ meta:
     rm -rf /etc/nginx/sites-available/default
     fuser -k 80/tcp
     fuser -k 443/tcp
-    
+
     service nginx restart
