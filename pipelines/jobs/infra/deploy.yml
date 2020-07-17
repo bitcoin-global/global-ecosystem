@@ -55,6 +55,7 @@ jobs:
     - get: global-io
       trigger: true
     - get: builder
+    - get: global-ecosystem
 
   - task: Deploy landing page
     <<: *provision-config
@@ -62,6 +63,7 @@ jobs:
       platform: linux
       inputs:
         - name: global-io
+        - name: global-ecosystem
       run:
         user: root
         path: bash
