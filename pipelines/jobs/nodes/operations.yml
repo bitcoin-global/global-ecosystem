@@ -1,29 +1,35 @@
 ---
 meta:
   # Git and GCloud already configured for each operation
-  perform_deploy: &perform_deploy
+  destroy: &destroy
+  - (( grab meta.destroy_node ))
+
+  stop: &stop
+  - (( grab meta.stop_node ))
+
+  deploy: &deploy
   - (( grab meta.make_node ))
   - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.install_node ))
 
-  perform_destroy: &perform_destroy
-  - (( grab meta.destroy_node ))
-
-  perform_stop: &perform_stop
-  - (( grab meta.stop_node ))
-
-  perform_update: &perform_update
+  update: &update
   - (( grab meta.make_node ))
   - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.update_node ))
 
-  perform_shared: &perform_shared
+  electrum: &electrum
   - (( grab meta.make_node ))
   - (( grab meta.configure_gcloud ))
   - (( grab meta.wait_for_node ))
-  - (( join "\n" meta.run_shared ))
+  - (( join "\n" meta.electrum_op ))
+
+  explorer: &explorer
+  - (( grab meta.make_node ))
+  - (( grab meta.configure_gcloud ))
+  - (( grab meta.wait_for_node ))
+  - (( join "\n" meta.explorer_op ))
 
   prepare_node: &prepare_node |
     ### Install required packages
@@ -40,7 +46,7 @@ meta:
     bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
-  post_git_ops: &post_git_ops |
+  prepare_bitcoin_install: &prepare_bitcoin_install |
     ### Install required tools
     mkdir -p /binaries
     mkdir -p /bitcoin-global
@@ -109,66 +115,27 @@ meta:
     done
     echo "Success!"
 
-  install_bitcoin: &install_bitcoin |
-    ### Installing Bitcoin Global
-    ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v ${BITCOIN_VERSION} -r ${BITCOIN_RELEASE} \
-      -t /binaries -d ${BITCOIN_DATA_DIR}
-
-    ### Save intro command
-    export BTC_COMMAND="${BITCOIN_ENTRYPOINT}"
-
-  update_bitcoin: &update_bitcoin |
-    ### Updating Bitcoin Global
-    ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v ${BITCOIN_UPDATE_VERSION} -r ${BITCOIN_UPDATE_RELEASE} \
-      -t /binaries -d ${BITCOIN_DATA_DIR}
-
-    ### Save intro command
-    export BTC_COMMAND="${BITCOIN_UPDATE_ENTRYPOINT}"
-
-  run_bitcoin: &run_bitcoin |
-    ### Stop Bitcoin Global
-    /binaries/bin/bitglob-cli stop || echo "mainnet: Already shutdown"
-    /binaries/bin/bitglob-cli -testnet stop || echo "testnet: Already shutdown"
-    sleep 1m
-
-    ### Run Bitcoin Global
-    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_ENTRYPOINT
-
-  update_run_bitcoin: &update_run_bitcoin |
-    ### Stop Bitcoin Global
-    /binaries/bin/bitglob-cli stop || echo "mainnet: Already shutdown"
-    /binaries/bin/bitglob-cli -testnet stop || echo "testnet: Already shutdown"
-    sleep 1m
-
-    ### Run Bitcoin Global
-    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $BITCOIN_UPDATE_ENTRYPOINT
-
-
   install_node: &install_node
+    - export ENTRYPOINT_COMMAND=${BITCOIN_ENTRYPOINT}
+    - export BTC_VERSION=${BITCOIN_VERSION}
+    - export BTC_RELEASE=${BITCOIN_RELEASE}
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
-    - (( grab meta.post_git_ops ))
-    - (( grab meta.install_bitcoin ))
-    - export CERT_TYPE="--test-cert"
-    - (( grab meta.certs_config ))
-    - (( grab meta.generate_env_config ))
-    - (( grab meta.run_bitcoin ))
+    - (( grab meta.prepare_bitcoin_install ))
+    - (( grab meta.deploy_bitcoin ))
     - exit
     - EOF
 
   update_node: &update_node
+    - export ENTRYPOINT_COMMAND=${BITCOIN_UPDATE_ENTRYPOINT}
+    - export BTC_VERSION=${BITCOIN_UPDATE_VERSION}
+    - export BTC_RELEASE=${BITCOIN_UPDATE_RELEASE}
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
-    - (( grab meta.post_git_ops ))
-    - (( grab meta.update_bitcoin ))
-    - export CERT_TYPE="--test-cert"
-    - (( grab meta.certs_config ))
-    - (( grab meta.generate_env_config ))
-    - (( grab meta.update_run_bitcoin ))
+    - (( grab meta.prepare_bitcoin_install ))
+    - (( grab meta.deploy_bitcoin ))
     - exit
     - EOF
 
@@ -185,9 +152,13 @@ meta:
       --zone="$NODE_ZONE" \
       --destroy
 
-  generate_env_config: &generate_env_config |
-    ### =============================
-    ### BITGLOB CONFIGURATION
+  deploy_bitcoin: &deploy_bitcoin |
+    ### Install Bitcoin
+    ./global-ecosystem/src/bitglobal/install-node.sh \
+      -v ${BTC_VERSION} -r ${BTC_RELEASE} \
+      -t /binaries -d ${BITCOIN_DATA_DIR}
+
+    ### Generate configuration
     cat <<CONFIG > /binaries/.bitglobal/bitglob.conf
     listen=1
     maxconnections=64
@@ -213,53 +184,50 @@ meta:
     rpcport=18444
     CONFIG
 
-    ### =============================
-    ### BITGLOB SERVICE CONFIGURATION
-    cat <<SCRIPT > /binaries/bin/bitcoin-startup.sh
+    ### Generate configuration
+    cat <<SCRIPT > /binaries/bin/bitcoin-service.sh
     #!/bin/bash
-    export GITHUB_TOKEN=${GITHUB_TOKEN}
-    
-    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf \$BTC_COMMAND
-    pm2 stop "${BITCOIN_NETWORK_TYPE}net-global-explorer" || echo "not there"
-    pm2 start /explorer/bin/www --name "${BITCOIN_NETWORK_TYPE}net-global-explorer" || echo "already there"
+    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
     SCRIPT
-    chmod +x /binaries/bin/bitcoin-startup.sh
+    chmod +x /binaries/bin/bitcoin-service.sh
 
-    ### =============================
-    ### BITGLOB SERVICE CONFIGURATION
-    cat <<SERVICE > /etc/systemd/system/bitcoin-startup.service
+    ### Generate service configuration
+    cat <<SERVICE > /etc/systemd/system/bitglobd.service
     [Unit]
-    Description=Bitcoin Startup service
+    Description=Bitcoin Daemon service
     After=network.target
 
     [Service]
-    EnvironmentFile=/etc/explorer-btc.conf
-    ExecStart=/binaries/bin/bitcoin-startup.sh
+    ExecStart=/binaries/bin/bitcoin-service.sh
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
-    Restart=always
+    Restart=on-failure
     RestartSec=3
 
     [Install]
     WantedBy=multi-user.target
     SERVICE
 
-    ### ==============================
-    systemctl enable bitcoin-startup
-    systemctl daemon-reload
-    systemctl start bitcoin-startup
+    ### Run service
+    systemctl daemon-reload && systemctl enable bitglobd
+    systemctl daemon-reload && systemctl start bitglobd
 
-  run_shared: &run_shared
+  electrum_op: &electrum_op
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.configure_git ))
-    - (( grab meta.electrum_config ))
-    - (( grab meta.certs_config ))
+    - (( grab meta.deploy_electrum ))
     - exit
     - EOF
 
-  electrum_config: &electrum_config |
-    ### ==============================
+  explorer_op: &explorer_op
+    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_git ))
+    - (( grab meta.deploy_explorer ))
+    - exit
+    - EOF
+
+  deploy_electrum: &deploy_electrum |
     ### Install Electrum
     rm -rf ~/.electrumx-installer/
     wget https://raw.githubusercontent.com/bauerj/electrumx-installer/master/bootstrap.sh -O - | \
@@ -268,48 +236,52 @@ meta:
       --update-python \
       --electrumx-git-url https://github.com/bitcoin-global/global-electrumx.git \
       --electrumx-git-branch altcoin
+    
+    ### Generate SSL
+    touch ~/.rnd
+    cd /etc/
+    mkdir -p electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.crt
+    cd electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.crt
 
-    ### ==============================
-    ### ELECTRUM SERVICE CONFIGURATION
+    openssl genrsa -out server.key 2048
+    openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/L=/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
+    openssl x509 -req -days 1825 -in server.csr -signkey server.key -out server.crt
+
+    ### Generate ElectrumX configuration
     cat <<SERVICECONFIG > /etc/electrumx.conf
-    DB_DIRECTORY = /db
-    DAEMON_URL = http://${BITCOIN_RPC_USERNAME}:${BITCOIN_RPC_PASSWORD}@127.0.0.1:18444/
-    COIN = BitcoinGlobal
+    DB_DIRECTORY=/db
+    DAEMON_URL=http://${BITCOIN_RPC_USERNAME}:${BITCOIN_RPC_PASSWORD}@127.0.0.1:18444/
+    COIN=BitcoinGlobal
     NET=${BITCOIN_NETWORK_TYPE}net
-    SSL_CERTFILE=/etc/electrumx/server.crt
-    SSL_KEYFILE=/etc/electrumx/server.key
-    # TCP_PORT=50001
-    # SSL_PORT=50002
-    # Listen on all interfaces:
-    HOST=
+    SSL_CERTFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.crt
+    SSL_KEYFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.key
+    SERVICES=SSL://:50001,SSL://:50002,SSL://:51001,SSL://:51002
+    ALLOW_ROOT=1
     SERVICECONFIG
 
     cat <<SERVICE > /etc/systemd/system/electrumx.service
     [Unit]
-    Description=Electrumx
-    After=network.target
+    Description=Electrumx Service
+    After=bitglobd.target
 
     [Service]
     EnvironmentFile=/etc/electrumx.conf
     ExecStart=/usr/local/bin/electrumx_server
-    User=electrumx
+    User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
-    Restart=always
+    Restart=on-failure
     RestartSec=3
 
     [Install]
     WantedBy=multi-user.target
     SERVICE
 
-    ### ==============================
-    systemctl enable electrumx
-    systemctl daemon-reload
-    systemctl start electrumx
+    ### Run service
+    systemctl daemon-reload && systemctl enable electrumx
+    systemctl daemon-reload && systemctl start electrumx
     
-
-  certs_config: &certs_config |
-    ### ========================
+  deploy_explorer: &deploy_explorer |
     ### Install requirements
     apt update -y && apt upgrade -y
     apt install -y git python-software-properties software-properties-common nginx gcc g++ make
@@ -318,37 +290,37 @@ meta:
     apt install -y python-certbot-nginx
     python3 -m pip install cffi
     npm install pm2 --global
-    
+
+    ### Create configs
     IN_LOCATION=$(echo "$NODE_ZONE" | cut -f1 -d"-")
     ADDITIONAL_PARAMS=""
-    ADDITIONAL_SERVER=""
     CERT_TYPE=${CERT_TYPE:-}
-
-    ### ========================
-    ### Deploy certs
     if [[ "$IN_LOCATION" == "europe" ]]; then
       ADDITIONAL_PARAMS="-d ${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
-      ADDITIONAL_SERVER="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
     fi
-    
-    certbot --nginx --agree-tos -n $CERT_TYPE \
-      $ADDITIONAL_PARAMS \
-      -d explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io \
-      -m admin@bitcoin-global.io
 
-    cat <<CERTS > /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
+    ### Deploy certificates for regional server
+    if [ ! -f /etc/letsencrypt/live/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem ]; then
+      certbot --nginx --agree-tos -n $CERT_TYPE \
+        $ADDITIONAL_PARAMS \
+        -d explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io \
+        -m admin@bitcoin-global.io
+    fi
+
+    ### Create nginx config
+    cat <<CERTS > /etc/nginx/sites-available/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
     server {
-      server_name $ADDITIONAL_SERVER explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+      server_name explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
       listen 80;
       #listen [::]:80 ipv6only=on;
-    
+
       location / {
         return 301 https://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io$request_uri;
       }
     }
-    
+
     server {
-      server_name $ADDITIONAL_SERVER explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+      server_name explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
       listen 443 ssl http2;
       #listen [::]:443 ssl http2 ipv6only=on;
 
@@ -367,22 +339,62 @@ meta:
       }
     }
     CERTS
-    
-    ln -s /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf /etc/nginx/sites-enabled/
+
+    ### Add additional virtual service in case of main server
+    if [[ "$IN_LOCATION" == "europe" ]]; then
+      cat <<CERTS > /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
+      server {
+        server_name ${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+        listen 80;
+        #listen [::]:80 ipv6only=on;
+
+        location / {
+          return 301 https://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io$request_uri;
+        }
+      }
+
+      server {
+        server_name ${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+        listen 443 ssl http2;
+        #listen [::]:443 ssl http2 ipv6only=on;
+
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_ciphers 'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH';
+        ssl_prefer_server_ciphers on;
+        ssl_session_cache shared:SSL:10m;
+        ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+        ssl_certificate     /etc/letsencrypt/live/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem;
+        ssl_certificate_key /etc/letsencrypt/live/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/privkey.pem;
+
+        location / {
+          proxy_pass http://localhost:3002;
+          proxy_http_version 1.1;
+        }
+      }
+      CERTS
+    fi
+
+    ### Enable nginx mapping
+    ln -s /etc/nginx/sites-available/*.conf /etc/nginx/sites-enabled/
     rm -rf /etc/nginx/sites-enabled/default
     rm -rf /etc/nginx/sites-available/default
     fuser -k 80/tcp
     fuser -k 443/tcp
     service nginx restart
-    
+
     cd /etc/ssl/certs
-    openssl dhparam -out dhparam.pem 4096
-    
+    if [ ! -f dhparam.pem ]; then
+      openssl dhparam -out dhparam.pem 4096
+    fi
+
+    ### Install explorer
     rm -rf /explorer
     git clone https://github.com/bitcoin-global/explorer.git /explorer
     cd /explorer
     npm install
-    
+
+    ### Generate explorer configuration
     mkdir -p ~/.config
     cat <<CONFIG > ~/.config/glob-rpc-explorer.env
     BGEXP_HOST=127.0.0.1
@@ -391,7 +403,29 @@ meta:
     BGEXP_BITGLOBD_PORT=18444
     BGEXP_BITGLOBD_USER=${BITCOIN_RPC_USERNAME}
     BGEXP_BITGLOBD_PASS=${BITCOIN_RPC_PASSWORD}
+    BGEXP_ADDRESS_API=electrumx
+    BGEXP_ELECTRUMX_SERVERS=ssl://127.0.0.1:50001
     CONFIG
 
-    pm2 stop "${BITCOIN_NETWORK_TYPE}net-global-explorer" || echo "not there"
-    pm2 start /explorer/bin/www --name "${BITCOIN_NETWORK_TYPE}net-global-explorer" || echo "already there"
+    ### Generate service configuration
+    chmod +x /explorer/bin/www
+    cat <<SERVICE > /etc/systemd/system/explorer.service
+    [Unit]
+    Description=Bitcoin Explorer service
+    After=bitglobd.target
+
+    [Service]
+    ExecStart=/explorer/bin/www
+    User=root
+    LimitNOFILE=8192
+    TimeoutStopSec=30min
+    Restart=on-failure
+    RestartSec=3
+
+    [Install]
+    WantedBy=multi-user.target
+    SERVICE
+
+    ### Run service
+    systemctl daemon-reload && systemctl enable bitglobd
+    systemctl daemon-reload && systemctl start bitglobd

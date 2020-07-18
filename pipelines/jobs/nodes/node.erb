@@ -2,7 +2,7 @@
 meta_plan:
   runner-config: &runner-config
     image: builder
-    timeout: 20m
+    timeout: 1h
     privileged: true
     params:
       # Secrets
@@ -11,19 +11,19 @@ meta_plan:
       SSH_USER                      : ((ssh.username))
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       TERM                          : xterm-256color
-      OPERATION                     : <%= operation %>
+      OPERATION                     : <%= operation.name %>
       
       # Git configs
       GITHUB_TOKEN      : ((git.token))
       GIT_REPO_EXPLORER : (( grab meta.global-explorer-repository ))
       GIT_REPO_ECOSYSTEM: (( grab meta.global-ecosystem-repository ))
 
-  run-<%= operation %>:
+  run-<%= operation.id %>:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
-    - (( join "\n" meta.perform_<%= operation %> ))
+    - (( join "\n" meta.<%= operation.id %> ))
 
-  trigger-<%= operation %>:
+  trigger-<%= operation.id %>:
     - (( grab meta.configure_git ))
     - (( grab meta.push-trigger ))
 
@@ -44,20 +44,20 @@ resources:
     password: ((git.password))
     branch  : triggers
     commit_filter:
-      include: ["[trigger] <%= operation %> <%= environment.type %>"]
+      include: ["[trigger] <%= operation.name %> <%= environment.type %>"]
 <% end %>
 
 ### Pipeline config
 jobs:
 <% net_config.each do |environment| %>
-- name: <%= operation %>-<%= environment.type %>
+- name: trigger-<%= environment.type %>
   build_logs_to_retain: 3
   serial: true
   plan:
   - in_parallel:
     - get: builder
 
-  - task: "[<%= operation %>] Trigger <%= environment.type %>"
+  - task: "[<%= operation.name %>] Trigger <%= environment.type %>"
     <<: *runner-config
     config:
       platform: linux
@@ -75,15 +75,15 @@ jobs:
         GIT_FOLDER       : trigger
         GIT_BRANCH       : triggers
         GIT_REPO         : (( grab meta.global-nodes-repository ))
-        TRIGGER_OPERATION: <%= operation %>
+        TRIGGER_OPERATION: <%= operation.name %>
         TRIGGER_NET      : <%= environment.type %>
-        COMMIT_MESSAGE   : "[trigger] <%= operation %> <%= environment.type %>"
+        COMMIT_MESSAGE   : "[trigger] <%= operation.name %> <%= environment.type %>"
       run:
         user: root
         path: bash
         args:
           - -exc
-          - (( join "\n" meta_plan.trigger-<%= operation %> ))
+          - (( join "\n" meta_plan.trigger-<%= operation.id %> ))
       outputs:
       - name: trigger
   - put: trigger-<%= environment.type %>
@@ -99,10 +99,10 @@ jobs:
     - get: global-ecosystem
     - get: trigger-<%= environment.type %>
       trigger: true
-      passed: [<%= operation %>-<%= environment.type %>]
+      passed: [trigger-<%= environment.type %>]
     - get: builder
 
-  - task: "[<%= operation %>] Node [<%= environment.type %>-<%= node %>]"
+  - task: "[<%= operation.name %>] Node [<%= environment.type %>-<%= node %>]"
     <<: *runner-config
     config:
       platform: linux
@@ -150,7 +150,7 @@ jobs:
         path: bash
         args:
           - -exc
-          - (( join "\n" meta_plan.run-<%= operation %> ))
+          - (( join "\n" meta_plan.run-<%= operation.id %> ))
 <% end %>
 
 - name: update-<%= environment.type %>-list
@@ -167,7 +167,7 @@ jobs:
       <% end %>
     - get: builder
 
-  - task: "[<%= operation %>] Update <%= environment.type %> node list"
+  - task: "[<%= operation.name %>] Update <%= environment.type %> node list"
     <<: *runner-config
     config:
       platform: linux
@@ -185,11 +185,11 @@ jobs:
         GCP_INFRA_PROJECT       : bitcoin-global-infra
 
         BITCOIN_NETWORK_TYPE: <%= environment.type %>
-        TRIGGER_OPERATION   : <%= operation %>
+        TRIGGER_OPERATION   : <%= operation.name %>
         TRIGGER_NET         : <%= environment.type %>
         SAVE_FILE           : <%= environment.type.upcase %>NET-NODES.md
         NODE_ZONES          : <%= environment.gcp.node_locations.join(',')  %>
-        COMMIT_MESSAGE      : "[<%= environment.type %>net] Update node information for <%= operation %> action"
+        COMMIT_MESSAGE      : "[<%= environment.type %>net] Update node information for <%= operation.name %> action"
       run:
         user: root
         path: bash
@@ -210,7 +210,7 @@ groups:
 <% net_config.each do |environment| %>
 - name: <%= environment.type %>
   jobs:
-  - <%= operation %>-<%= environment.type %>
+  - trigger-<%= environment.type %>
   <% environment.gcp.node_locations.each do |node| %>
   - <%= environment.type %>--<%= node %>
   <% end %>

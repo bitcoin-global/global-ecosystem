@@ -41,8 +41,8 @@
 #
 ###############################################################################
 
-REPO="bitcoin-global/bitcoin-global"
-REPO_URL="https://github.com/bitcoin-global/bitcoin-global.git"
+REPO="bitcoin-global/bitcoin-global.private"
+REPO_URL="https://github.com/$REPO.git"
 
 # See https://github.com/bitcoin-global/bitcoin-global/tags for latest version.
 VERSION=0.19.1

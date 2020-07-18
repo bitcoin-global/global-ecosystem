@@ -15,18 +15,18 @@ spruce:
       - resources/docker.builder.yml
   - with_all_in: jobs/nodes/
     regexp: ".*.(yml)"
-  to: ignore.nodes-<%= operation %>.pipeline.yml
+  to: ignore.nodes-<%= operation.name %>.pipeline.yml
 
 # Clean pipeline file
-- base: ignore.nodes-<%= operation %>.pipeline.yml
+- base: ignore.nodes-<%= operation.name %>.pipeline.yml
   prune:
   - meta
   - meta_plan
-  to: ignore.nodes-<%= operation %>.pipeline.yml
+  to: ignore.nodes-<%= operation.name %>.pipeline.yml
 
 # Deploy pipeline file
 fly:
   target: bitglob
-  name: <%= operation %>-nodes
-  config: ignore.nodes-<%= operation %>.pipeline.yml
+  name: <%= operation.name %>
+  config: ignore.nodes-<%= operation.name %>.pipeline.yml
   non_interactive: true

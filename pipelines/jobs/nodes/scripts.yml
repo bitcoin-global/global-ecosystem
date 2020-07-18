@@ -32,15 +32,16 @@ meta:
       status=$(echo ${VM_DATA} | jq .status | tr -d '"')
       DATA="\`$name\`"
       DATA="$DATA | [$public_ip]($public_ip)"
-      DATA="$DATA | [http://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)"
-      DATA="$DATA | [http://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
+      DATA="$DATA | [electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
+      DATA="$DATA | [explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
       DATA="$DATA | $status"
       echo "$DATA" >> $SAVE_FILE
     done
 
     echo -e "\nMain servers:\n" >> $SAVE_FILE
-    echo -e "* **ElectrumX** (in Europe) - [http://electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001](http://electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001)" >> $SAVE_FILE
-    echo -e "* **Explorer** (in Europe) - [http://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
+    echo -e "* **ElectrumX** (in Europe) - [electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
+    echo -e "* **Explorer** (in Europe) - [${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
+    echo -e "\`Note\` - All ElectrumX servers exposed publicly on SSL ports on \`{50001, 50002, 51001, 51002}" >> $SAVE_FILE
     echo -e "\n\nLast update: \`$timestamp\`" >> $SAVE_FILE
 
     # Sync changes

@@ -6,7 +6,18 @@ require 'ostruct'
 ### ---------- Configs
 env_config_file = File.expand_path(File.dirname(__FILE__) + "../../../../") + '/.env/nodes.yml'
 net_config      = JSON.parse(YAML.load_file(env_config_file).to_json, object_class: OpenStruct)
-operations      = ["deploy", "stop", "update", "shared"]
+operations      = JSON.parse(YAML.load('
+- id: deploy
+  name: deploy-nodes
+- id: stop
+  name: stop-nodes
+- id: update
+  name: update-nodes
+- id: electrum
+  name: configure-electrum
+- id: explorer
+  name: configure-explorer
+').to_json, object_class: OpenStruct)
 
 ### ---------- Parse node data
 for operation in operations do
