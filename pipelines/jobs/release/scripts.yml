@@ -66,10 +66,10 @@ meta:
     echo "Setup release build configuration for $GITHUB_TAG"
     
     ### Configure Bitcoin Global builder
-    rm -rf ./bitcoin-global
-    git clone https://github.com/bitcoin-global/bitcoin-global.private.git ./bitcoin-global
+    git clone https://github.com/bitcoin-global/bitcoin-global.git ./tmp-bitcoin-global
     cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
     chmod u+x ./gitian-build.py
+    rm -rf ./tmp-bitcoin-global
 
     ### Run builder setup
     rm -rf ./gitian-builder
