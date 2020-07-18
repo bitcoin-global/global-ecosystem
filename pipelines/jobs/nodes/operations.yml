@@ -240,11 +240,11 @@ meta:
     ### Generate SSL
     touch ~/.rnd
     cd /etc/
-    mkdir -p electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.crt
-    cd electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.crt
+    mkdir -p electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
+    cd electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
 
     openssl genrsa -out server.key 2048
-    openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/L=/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
+    openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
     openssl x509 -req -days 1825 -in server.csr -signkey server.key -out server.crt
 
     ### Generate ElectrumX configuration

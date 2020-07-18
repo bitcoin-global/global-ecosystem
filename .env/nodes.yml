@@ -34,11 +34,11 @@
   # Node env config
   port   : 8222
   # Before bootstrap
-  command: "-skiphardforkibd -bootstrap -daemon"
+  command: "-skiphardforkibd -bootstrap"
   release: v0.19.1-bootstrap
   version: 0.19.1
   # After bootstrap
-  command_update: "-daemon"
+  command_update: ""
   update_version: 0.19.2
   update_release: v0.19.2
 ### ===========================================================
@@ -63,10 +63,10 @@
     netdata_room: "a9c21a87-65f9-4bd8-86b0-e9de831a597a"
   port   : 18222
   # Before bootstrap
-  command: "-testnet -skiphardforkibd -bootstrap -daemon"
+  command: "-testnet -skiphardforkibd -bootstrap"
   release: v0.19.1-bootstrap
   version: 0.19.1
   # After bootstrap
-  command_update: "-testnet -daemon"
+  command_update: "-testnet"
   update_release: v0.19.2
   update_version: 0.19.2
