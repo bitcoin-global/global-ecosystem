@@ -41,7 +41,7 @@
 #
 ###############################################################################
 
-REPO="bitcoin-global/bitcoin-global.private"
+REPO="bitcoin-global/bitcoin-global"
 REPO_URL="https://github.com/$REPO.git"
 
 # See https://github.com/bitcoin-global/bitcoin-global/tags for latest version.
