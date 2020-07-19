@@ -123,7 +123,7 @@ meta:
 
     ### ==============================
     systemctl daemon-reload && systemctl enable dnsseeder
-    systemctl daemon-reload && systemctl start dnsseeder
+    systemctl daemon-reload && systemctl restart dnsseeder
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key
