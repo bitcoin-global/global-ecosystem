@@ -161,14 +161,14 @@ meta:
     fi
     
     ### Add configuration files
-    cat <<'CERTS' > /etc/nginx/sites-available/bitcoin-global.io.conf
+    cat <<CERTS > /etc/nginx/sites-available/bitcoin-global.io.conf
     server {
       server_name bitcoin-global.io;
       listen 80;
       #listen [::]:80 ipv6only=on;
 
       location / {
-        return 301 https://bitcoin-global.io$request_uri;
+        return 301 https://bitcoin-global.io\$request_uri;
       }
     }
 
@@ -190,7 +190,7 @@ meta:
       index index.html;
 
       location / {
-        try_files $uri $uri/ =404;
+        try_files \$uri \$uri/ =404;
       }
 
       error_page 404 /404.html;
@@ -205,10 +205,10 @@ meta:
         internal;
       }
 
-      location ~* \.(jpg|jpeg|png|gif|ico)$ {
+      location ~* \.(jpg|jpeg|png|gif|ico)\$ {
         expires 30d;
       }
-      location ~* \.(css|js)$ {
+      location ~* \.(css|js)\$ {
         expires 7d;
       }
     }
