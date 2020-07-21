@@ -87,35 +87,35 @@ meta:
 
     ### ================== Add Explorer server config
     ### Regional A record
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+    global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
       --value="${EXTERNAL_IP}" --domain="explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
     
     ### ================== Add ElectrumX server config
     ### Regional A record
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+    global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
       --value="${EXTERNAL_IP}" --domain="electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
 
     ### ================== Add Miner server config
     ### Regional A record
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+    global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
       --value="${EXTERNAL_IP}" --domain="pool.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
     
     if [[ "$IN_LOCATION" == "europe" ]]; then
       ### Parent Electrumx record
-      global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
         --value="${EXTERNAL_IP}" --domain="electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
         --project="${GCP_INFRA_PROJECT}"
 
       ### Parent Explorer record
-      global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
         --value="${EXTERNAL_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
         --project="${GCP_INFRA_PROJECT}"
 
       ### Parent Miner record
-      global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
         --value="${EXTERNAL_IP}" --domain="pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
         --project="${GCP_INFRA_PROJECT}"
     fi

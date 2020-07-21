@@ -22,6 +22,9 @@ CONCOURSE_SECRETS_FOLDER=${CONCOURSE_SECRETS_FOLDER:-ignore.secret}
 CONCOURSE_GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-5c1c9014a8c93bdf5cc2}
 CONCOURSE_GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
 
+CLOUDFLARE_EMAIL=${CLOUDFLARE_EMAIL:-}
+CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+
 ###############################################################################
 # ===================== Creating secrets
 ###############################################################################
@@ -86,8 +89,8 @@ info "Configuring Google dependencies and Kubernetes secrets..."
 ${SCRIPT_ROOT}/login.sh --gke
 
 # ===================== Configuring GCP DNS configs
-${SCRIPT_ROOT}/setup-dns.sh --name="dev-bitcoin-global" --dns="bitcoin-global.dev"
-${SCRIPT_ROOT}/dns-record.sh --name="dev-bitcoin-global" --domain="ci.bitcoin-global.dev" --type="CNAME"
+# ${SCRIPT_ROOT}/setup-dns.sh --name="bitcoin-global.dev" --dns="bitcoin-global.dev"
+${SCRIPT_ROOT}/dns-record.sh --cf --name="bitcoin-global.dev" --domain="ci.bitcoin-global.dev" --type="CNAME"
 
 # ===================== Adding K8s secrets
 INSTALLED_CHARTS=$(helm list -oyaml)

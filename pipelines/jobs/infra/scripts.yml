@@ -17,19 +17,19 @@ meta:
     EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION --format json | jq '.address' | tr -d '"')
     
     # Add to .io
-    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+    global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
       --value="${EXTERNAL_IP}" --domain="@.bitcoin-global.io"
 
     ### Create zones
     DOMAINS=dev,io
     for DOMAIN in $(echo ${DOMAINS} | sed "s/,/ /g")
     do
-      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="A" \
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.${DOMAIN}" --type="A" \
         --value="${EXTERNAL_IP}" --domain="vps.bitcoin-global.${DOMAIN}"
-      # global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-      #   --value="vps.bitcoin-global.${DOMAIN}." --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
-      # global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-      #   --value="vps.bitcoin-global.${DOMAIN}." --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.${DOMAIN}" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}." --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+      global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.${DOMAIN}" --type="NS" \
+        --value="vps.bitcoin-global.${DOMAIN}." --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
     done
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
@@ -96,9 +96,12 @@ meta:
     sudo rm -rf python-cloudflare
 
     ### Install DNS seeder
+    MAINNET_IP=\$(dig +short mainnet.bitcoin-global.io)
+    TESTNET_IP=\$(dig +short testnet.bitcoin-global.io)
+    
     git clone https://github.com/team-exor/generic-seeder /testnet-seeder
     git clone https://github.com/team-exor/generic-seeder /mainnet-seeder
-    cd /global-seeder && make
+    cd /testnet-seeder && make
     cd /mainnet-seeder && make
 
     ### ============ TEST DNSSEEDER
@@ -115,8 +118,8 @@ meta:
     explorer_url=""
     second_explorer_url=""
     explorer_requery_seconds="60"
-    block_count="10"
-    seed_1="$(dig +short testnet.bitcoin-global.io)"
+    block_count="1780319"
+    seed_1="\$TESTNET_IP"
     seed_2=""
     seed_3=""
     seed_4=""
@@ -165,8 +168,8 @@ meta:
     explorer_url=""
     second_explorer_url=""
     explorer_requery_seconds="60"
-    block_count="10"
-    seed_1="$(dig +short mainnet.bitcoin-global.io)"
+    block_count="638593"
+    seed_1="\$MAINNET_IP"
     seed_2=""
     seed_3=""
     seed_4=""
