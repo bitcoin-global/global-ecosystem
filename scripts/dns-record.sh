@@ -91,6 +91,9 @@ else
     fi
 
     ### Throw error code
+    if [ "$(echo $result | jq .errors[].code)" == "81057" ]; then ## Already exists, skip error
+        exit 0
+    fi
     if [ "$(echo $result | jq .success)" == "false" ]; then
         echo "ERROR: Something went wrong!"
         echo $result | jq
