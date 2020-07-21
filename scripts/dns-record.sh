@@ -68,7 +68,6 @@ else
             -H "X-Auth-Email: ${CLOUDFLARE_EMAIL}" \
             -H "X-Auth-Key: ${CLOUDFLARE_API_TOKEN}" \
             -H "Content-Type: application/json" | jq -r '{"result"}[] | .[0] | .id')
-    echo  "{\"type\":\"$DOMAIN_TYPE\",\"name\":\"$DOMAIN_VALUE\",\"content\":\"$PARENT_VALUE\",\"proxied\":false}"
 
     # get the dns record id
     dnsrecordid=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$zoneid/dns_records?type=A&name=$DOMAIN_VALUE" \
@@ -77,15 +76,14 @@ else
                 -H "Content-Type: application/json" | jq -r '{"result"}[] | .[0] | .id')
 
     # update the record
-    if [ "$DOMAIN_VALUEid" == "null" ]; then
-        echo "AAAAAAA"
+    if [ "$dnsrecordid" == "null" ]; then
         result=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$zoneid/dns_records/" \
                     -H "X-Auth-Email: ${CLOUDFLARE_EMAIL}" \
                     -H "X-Auth-Key: ${CLOUDFLARE_API_TOKEN}" \
                     -H "Content-Type: application/json" \
                     --data "{\"type\":\"$DOMAIN_TYPE\",\"name\":\"$DOMAIN_VALUE\",\"content\":\"$PARENT_VALUE\",\"proxied\":false}")
     else
-        result=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zoneid/dns_records/$DOMAIN_VALUEid" \
+        result=$(curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/$zoneid/dns_records/$dnsrecordid" \
                     -H "X-Auth-Email: ${CLOUDFLARE_EMAIL}" \
                     -H "X-Auth-Key: ${CLOUDFLARE_API_TOKEN}" \
                     -H "Content-Type: application/json" \

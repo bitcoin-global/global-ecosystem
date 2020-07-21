@@ -373,8 +373,8 @@ build_bitcoin_global() {
     print_info "\nBuilding Bitcoin Global $VERSION"
     print_info "Build output: $TARGET_DIR/bitcoin-global/build.out"
     print_info "This can take up to an hour or more..."
-    rm -f build.out
-    cd bitcoin-global &&
+    rm -rf build.out
+    cd ./bitcoin-global &&
         git fetch > build.out 2>&1 &&
         git checkout "$CHECKOUT" 1>> build.out 2>&1 &&
         git clean -f -d -x 1>> build.out 2>&1 &&
@@ -685,7 +685,7 @@ uninstall_bitcoin_global() {
     fi
 }
 
-while getopts ":v:r:t:d:p:b:u:g:c" opt
+while getopts ":v:r:t:d:p:b:u:g:c:" opt
 do
     case "$opt" in
         v)
