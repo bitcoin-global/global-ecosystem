@@ -32,7 +32,10 @@ meta:
     service apt-cacher-ng restart
 
     ### Install monitoring
-    bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    echo "Install monitoring"
+    if [ ! -f /opt/netdata/usr/bin/netdata-claim.sh ]; then
+      bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    fi
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
     ### Install OSSLSIGNCODE

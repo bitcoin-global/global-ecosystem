@@ -63,18 +63,21 @@ meta:
     - ENDSSH
 
   prepare_infra_node: &prepare_infra_node |
-      ### Download system dependencies
-      echo "Prepare machine"
-      apt-get update
-      apt-get upgrade -y
-      apt-get install -y \
-        gnupg2 ca-certificates git software-properties-common \
-        python3.6 sudo nano ruby make wget curl pigz \
-        build-essential autoconf libssl1.0-dev libboost-all-dev libssl-dev
+    ### Download system dependencies
+    echo "Prepare machine"
+    apt-get update
+    apt-get upgrade -y
+    apt-get install -y \
+      gnupg2 ca-certificates git software-properties-common \
+      python3.6 sudo nano ruby make wget curl pigz \
+      build-essential autoconf libboost-all-dev libssl-dev
 
-      ### Install monitoring
+    ### Install monitoring
+    echo "Install monitoring"
+    if [ ! -f /opt/netdata/usr/bin/netdata-claim.sh ]; then
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
-      /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+    fi
+    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
   deploy_seeders: &deploy_seeders |
     ### Install aditional requirements

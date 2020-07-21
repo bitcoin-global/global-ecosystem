@@ -44,12 +44,14 @@ meta:
     apt-get install -y \
       gnupg2 ca-certificates git software-properties-common \
       python3.6 sudo nano ruby wget curl pigz \
-      autoconf libssl1.0-dev dirmngr gosu dnsutils gpg wget jq npm
+      autoconf dirmngr gosu dnsutils gpg wget jq npm
     service apt-cacher-ng restart
 
     ### Install monitoring
     echo "Install monitoring"
-    bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    if [ ! -f /opt/netdata/usr/bin/netdata-claim.sh ]; then
+      bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
+    fi
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
   prepare_bitcoin_install: &prepare_bitcoin_install |
@@ -136,7 +138,7 @@ meta:
     - export ENTRYPOINT_COMMAND=${BITCOIN_ENTRYPOINT}
     - export BTC_VERSION=${BITCOIN_VERSION}
     - export BTC_RELEASE=${BITCOIN_RELEASE}
-    - export REPO_INSTALL_PATH="bitcoin-global/bitcoin-global.private"
+    - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global.private"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -149,7 +151,7 @@ meta:
     - export ENTRYPOINT_COMMAND=${BITCOIN_UPDATE_ENTRYPOINT}
     - export BTC_VERSION=${BITCOIN_UPDATE_VERSION}
     - export BTC_RELEASE=${BITCOIN_UPDATE_RELEASE}
-    - export REPO_INSTALL_PATH="bitcoin-global/bitcoin-global"
+    - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -174,9 +176,9 @@ meta:
   deploy_bitcoin: &deploy_bitcoin |
     ### Install Bitcoin
     ./global-ecosystem/src/bitglobal/install-node.sh \
-      -v ${BTC_VERSION} -r ${BTC_RELEASE} \
-      -t /binaries -d ${BITCOIN_DATA_DIR} \
-      -g ${REPO_INSTALL_PATH}
+      -v ${BTC_VERSION} -r v${BTC_RELEASE} \
+      -g ${REPO_GIT_LOCATION} -c ${BTC_RELEASE} \
+      -t /binaries -d ${BITCOIN_DATA_DIR}
 
     ### Generate configuration
     cat <<CONFIG > /binaries/.bitglobal/bitglob.conf

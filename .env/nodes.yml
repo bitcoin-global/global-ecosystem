@@ -37,12 +37,12 @@
   rpc_port: 18444
   # Before bootstrap
   command: "-skiphardforkibd -bootstrap"
-  release: v0.19.1-bootstrap
+  release: 0.19.1-bootstrap
   version: 0.19.1
   # After bootstrap
   command_update: ""
   update_version: 0.19.2
-  update_release: v0.19.2
+  update_release: 0.19.2
   # Mining stuff
   miner_address : mtH8N2GuwPPLP9tEv82r9FnZdNxRYQp9V8
   miner_port    : 9223
@@ -73,11 +73,11 @@
   rpc_port: 18444
   # Before bootstrap
   command: "-testnet -skiphardforkibd -bootstrap"
-  release: v0.19.1-bootstrap
+  release: 0.19.1-bootstrap
   version: 0.19.1
   # After bootstrap
   command_update: "-testnet"
-  update_release: v0.19.2
+  update_release: 0.19.2
   update_version: 0.19.2
   # Mining stuff
   miner_address : mtH8N2GuwPPLP9tEv82r9FnZdNxRYQp9V8

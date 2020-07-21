@@ -46,7 +46,8 @@ REPO_URL="https://github.com/$REPO.git"
 
 # See https://github.com/bitcoin-global/bitcoin-global/tags for latest version.
 VERSION=0.19.1
-RELEASE=$VERSION
+RELEASE=v$VERSION
+CHECKOUT=$VERSION
 
 TARGET_DIR=$HOME/bin
 DATA_DIR=$HOME/bitcoin-global
@@ -106,6 +107,10 @@ Usage: $0 [-h] [-v <version>] [-t <target_directory>] [-p <port>] [-b] [-u]
 -g
     Use this GitHub org/repo
     Default: $REPO
+
+-c
+    Checkout this GitHub branch
+    Default: $CHECKOUT
 
 -u
     Uninstall Bitcoin Global.
@@ -371,7 +376,7 @@ build_bitcoin_global() {
     rm -f build.out
     cd bitcoin-global &&
         git fetch > build.out 2>&1 &&
-        git checkout "$VERSION" 1>> build.out 2>&1 &&
+        git checkout "$CHECKOUT" 1>> build.out 2>&1 &&
         git clean -f -d -x 1>> build.out 2>&1 &&
         ./autogen.sh 1>> build.out 2>&1 &&
         ./configure \
@@ -707,6 +712,9 @@ do
         g)
             REPO=${OPTARG}
             REPO_URL="https://github.com/${OPTARG}.git"
+            ;;
+        c)
+            CHECKOUT=${OPTARG}
             ;;
         h)
             usage
