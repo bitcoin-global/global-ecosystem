@@ -18,7 +18,7 @@ meta:
     
     # Add to .io
     global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="@.bitcoin-global.io"
+      --value="${EXTERNAL_IP}" --domain="bitcoin-global.io"
 
     ### Create zones
     DOMAINS=dev,io
@@ -85,15 +85,18 @@ meta:
     apt-get install -y nodejs-dev node-gyp libssl1.0-dev
     apt-get install -y build-essential libboost-all-dev libssl-dev
     apt-get install -y libcurl4-openssl-dev libconfig++-dev
+    apt-get install -y nodejs-dev node-gyp libssl1.0-dev
     apt-get install -f -y npm
-    npm install forever -g
-    sudo apt-get install -y python python-setuptools
+    apt-get install -y python python-setuptools
+    python3 -m pip install cffi
+    npm install pm2 --global
+
     git clone https://github.com/cloudflare/python-cloudflare
     cd python-cloudflare
     ./setup.py build
-    sudo ./setup.py install
+    ./setup.py install
     cd ..
-    sudo rm -rf python-cloudflare
+    rm -rf python-cloudflare
 
     ### Install DNS seeder
     MAINNET_IP=\$(dig +short mainnet.bitcoin-global.io)
@@ -136,24 +139,6 @@ meta:
     cf_seed_dump="dnsseed.dump"
     SRVCCFG
 
-    cat <<SRVCCFG > /etc/systemd/system/dnsseeder-test.service
-    [Unit]
-    Description=DNS Seeder
-    After=network.target
-
-    [Service]
-    ExecStart=/testnet-seeder/dnsseed
-    User=root
-    LimitNOFILE=8192
-    TimeoutStopSec=30min
-    Restart=on-failure
-    RestartSec=3
-
-    [Install]
-    WantedBy=multi-user.target
-    SRVCCFG
-    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /testnet-seeder/cf-uploader && python seeder.py") | crontab -
-
     ### ============ MAIN DNSSEEDER
     cat <<SRVCCFG > /mainnet-seeder/settings.conf
     protocol_version="70016"
@@ -186,29 +171,16 @@ meta:
     cf_seed_dump="dnsseed.dump"
     SRVCCFG
 
-    cat <<SRVCCFG > /etc/systemd/system/dnsseeder-main.service
-    [Unit]
-    Description=DNS Seeder
-    After=network.target
-
-    [Service]
-    ExecStart=/mainnet-seeder/dnsseed
-    User=root
-    LimitNOFILE=8192
-    TimeoutStopSec=30min
-    Restart=on-failure
-    RestartSec=3
-
-    [Install]
-    WantedBy=multi-user.target
-    SRVCCFG
-    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /mainnet-seeder/cf-uploader && python seeder.py") | crontab -
-
     ### ==============================
-    systemctl daemon-reload && systemctl enable dnsseeder-main
-    systemctl daemon-reload && systemctl enable dnsseeder-test
-    systemctl daemon-reload && systemctl restart dnsseeder-main
-    systemctl daemon-reload && systemctl restart dnsseeder-test
+    pm2 startup
+    pm2 start /testnet-seeder/dnsseed --name "testnet-seeder" || echo "Already on the list"
+    pm2 start /mainnet-seeder/dnsseed --name "mainnet-seeder" || echo "Already on the list"
+    pm2 save
+
+    crontab -u root -l | grep -v '/testnet-seeder'  | crontab -u root -
+    crontab -u root -l | grep -v '/mainnet-seeder'  | crontab -u root -
+    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /testnet-seeder/cf-uploader && python seeder.py") | crontab -
+    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /mainnet-seeder/cf-uploader && python seeder.py") | crontab -
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key
