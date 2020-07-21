@@ -21,15 +21,15 @@ meta:
       --value="${EXTERNAL_IP}" --domain="@.bitcoin-global.io"
 
     ### Create zones
-    DOMAINS=dev,co,io
+    DOMAINS=dev,io
     for DOMAIN in $(echo ${DOMAINS} | sed "s/,/ /g")
     do
       global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="A" \
         --value="${EXTERNAL_IP}" --domain="vps.bitcoin-global.${DOMAIN}"
-      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}." --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
-      global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
-        --value="vps.bitcoin-global.${DOMAIN}." --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+      # global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
+      #   --value="vps.bitcoin-global.${DOMAIN}." --domain="dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
+      # global-ecosystem/scripts/dns-record.sh --name="${DOMAIN}-bitcoin-global" --type="NS" \
+      #   --value="vps.bitcoin-global.${DOMAIN}." --domain="test-dnsseed.bitcoin-global.${DOMAIN}" --ttl="21600"
     done
 
   wait_for_nodeinfra: &wait_for_nodeinfra |
@@ -51,7 +51,7 @@ meta:
     - (( grab meta.prepare_infra_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
-    - (( grab meta.install_required_pkg ))
+    - (( grab meta.deploy_seeders ))
     - exit
     - ENDSSH
 
@@ -76,26 +76,67 @@ meta:
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
       /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
-  install_required_pkg: &install_required_pkg |
+  deploy_seeders: &deploy_seeders |
     ### Install aditional requirements
     apt-get autoremove -y
     apt-get install -y nodejs-dev node-gyp libssl1.0-dev
     apt-get install -y build-essential libboost-all-dev libssl-dev
+    apt-get install -y libcurl4-openssl-dev libconfig++-dev
     apt-get install -f -y npm
     npm install forever -g
+    sudo apt-get install -y python python-setuptools
+    git clone https://github.com/cloudflare/python-cloudflare
+    cd python-cloudflare
+    ./setup.py build
+    sudo ./setup.py install
+    cd ..
+    sudo rm -rf python-cloudflare
 
     ### Install DNS seeder
-    git clone https://github.com/bitcoin-global/global-seeder.git /global-seeder
+    git clone https://github.com/team-exor/generic-seeder /testnet-seeder
+    git clone https://github.com/team-exor/generic-seeder /mainnet-seeder
     cd /global-seeder && make
+    cd /mainnet-seeder && make
 
     ### ============ TEST DNSSEEDER
+    cat <<SRVCCFG > /testnet-seeder/settings.conf
+    protocol_version="70016"
+    init_proto_version="209"
+    min_peer_proto_version="70015"
+    caddr_time_version="31402"
+    pchMessageStart_0 = "0x50"
+    pchMessageStart_1 = "0xc9"
+    pchMessageStart_2 = "0x6a"
+    pchMessageStart_3 = "0x24"
+    wallet_port="18222"
+    explorer_url=""
+    second_explorer_url=""
+    explorer_requery_seconds="60"
+    block_count="10"
+    seed_1="$(dig +short testnet.bitcoin-global.io)"
+    seed_2=""
+    seed_3=""
+    seed_4=""
+    seed_5=""
+    seed_6=""
+    seed_7=""
+    seed_8=""
+    seed_9=""
+    seed_10=""
+    cf_domain="bitcoin-global.co"
+    cf_domain_prefix="test-dnsseed"
+    cf_username="${CLOUDFLARE_EMAIL}"
+    cf_api_key="${CLOUDFLARE_API_TOKEN}"
+    cf_seed_dump="dnsseed.dump"
+    SRVCCFG
+
     cat <<SRVCCFG > /etc/systemd/system/dnsseeder-test.service
     [Unit]
     Description=DNS Seeder
     After=network.target
 
     [Service]
-    ExecStart=/global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
+    ExecStart=/testnet-seeder/dnsseed
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
@@ -105,15 +146,47 @@ meta:
     [Install]
     WantedBy=multi-user.target
     SRVCCFG
+    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /testnet-seeder/cf-uploader && python seeder.py") | crontab -
 
     ### ============ MAIN DNSSEEDER
+    cat <<SRVCCFG > /mainnet-seeder/settings.conf
+    protocol_version="70016"
+    init_proto_version="209"
+    min_peer_proto_version="70015"
+    caddr_time_version="31402"
+    pchMessageStart_0 = "0x3b"
+    pchMessageStart_1 = "0xf8"
+    pchMessageStart_2 = "0xac"
+    pchMessageStart_3 = "0x8f"
+    wallet_port="8222"
+    explorer_url=""
+    second_explorer_url=""
+    explorer_requery_seconds="60"
+    block_count="10"
+    seed_1="$(dig +short mainnet.bitcoin-global.io)"
+    seed_2=""
+    seed_3=""
+    seed_4=""
+    seed_5=""
+    seed_6=""
+    seed_7=""
+    seed_8=""
+    seed_9=""
+    seed_10=""
+    cf_domain="bitcoin-global.co"
+    cf_domain_prefix="dnsseed"
+    cf_username="${CLOUDFLARE_EMAIL}"
+    cf_api_key="${CLOUDFLARE_API_TOKEN}"
+    cf_seed_dump="dnsseed.dump"
+    SRVCCFG
+
     cat <<SRVCCFG > /etc/systemd/system/dnsseeder-main.service
     [Unit]
     Description=DNS Seeder
     After=network.target
 
     [Service]
-    ExecStart=/global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev
+    ExecStart=/mainnet-seeder/dnsseed
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
@@ -123,6 +196,7 @@ meta:
     [Install]
     WantedBy=multi-user.target
     SRVCCFG
+    (crontab -l 2>/dev/null; echo "*/10 * * * * cd /mainnet-seeder/cf-uploader && python seeder.py") | crontab -
 
     ### ==============================
     systemctl daemon-reload && systemctl enable dnsseeder-main

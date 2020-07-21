@@ -17,6 +17,8 @@ meta:
       GPG_SUBKEY                    : ((gpg.subkey))
       RELEASE_CERT                  : ((cert.cert))
       RELEASE_KEY                   : ((cert.key))
+      CLOUDFLARE_EMAIL              : hivemindf@gmail.com
+      CLOUDFLARE_API_TOKEN          : ((cf.api-token))
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
       GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
