@@ -88,29 +88,32 @@ meta:
     git clone https://github.com/bitcoin-global/global-seeder.git /global-seeder
     cd /global-seeder && make
 
-    ### ==============================
-    ### DNS SEED SERVICE CONFIGURATION
-    cat <<SCRIPT > /etc/init.d/dnsseeder-startup.sh
-    #!/bin/bash
-    forever stopall
-    #forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io
-    #forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co
-    forever start /global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev
-    
-    #forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.io -n vps.bitcoin-global.io -m admin@bitcoin-global.io --testnet
-    #forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.co -n vps.bitcoin-global.co -m admin@bitcoin-global.co --testnet
-    forever start /global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
-    SCRIPT
-    
-    chmod +x /etc/init.d/dnsseeder-startup.sh
-
-    cat <<SRVCCFG > /etc/systemd/system/dnsseeder.service
+    ### ============ TEST DNSSEEDER
+    cat <<SRVCCFG > /etc/systemd/system/dnsseeder-test.service
     [Unit]
     Description=DNS Seeder
     After=network.target
 
     [Service]
-    ExecStart=/etc/init.d/dnsseeder-startup.sh
+    ExecStart=/global-seeder/dnsseed -h test-dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev --testnet
+    User=root
+    LimitNOFILE=8192
+    TimeoutStopSec=30min
+    Restart=on-failure
+    RestartSec=3
+
+    [Install]
+    WantedBy=multi-user.target
+    SRVCCFG
+
+    ### ============ MAIN DNSSEEDER
+    cat <<SRVCCFG > /etc/systemd/system/dnsseeder-main.service
+    [Unit]
+    Description=DNS Seeder
+    After=network.target
+
+    [Service]
+    ExecStart=/global-seeder/dnsseed -h dnsseed.bitcoin-global.dev -n vps.bitcoin-global.dev -m admin@bitcoin-global.dev
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
@@ -122,8 +125,10 @@ meta:
     SRVCCFG
 
     ### ==============================
-    systemctl daemon-reload && systemctl enable dnsseeder
-    systemctl daemon-reload && systemctl restart dnsseeder
+    systemctl daemon-reload && systemctl enable dnsseeder-main
+    systemctl daemon-reload && systemctl enable dnsseeder-test
+    systemctl daemon-reload && systemctl restart dnsseeder-main
+    systemctl daemon-reload && systemctl restart dnsseeder-test
 
   import_gpg: &import_gpg |
     ### Import and unlock GPG key

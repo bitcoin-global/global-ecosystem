@@ -17,6 +17,8 @@ operations      = JSON.parse(YAML.load('
   name: configure-electrum
 - id: explorer
   name: configure-explorer
+- id: miner
+  name: configure-miners
 ').to_json, object_class: OpenStruct)
 
 ### ---------- Parse node data

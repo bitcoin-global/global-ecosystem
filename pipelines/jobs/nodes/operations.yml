@@ -31,6 +31,12 @@ meta:
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.explorer_op ))
 
+  miner: &miner
+  - (( grab meta.make_node ))
+  - (( grab meta.configure_gcloud ))
+  - (( grab meta.wait_for_node ))
+  - (( join "\n" meta.miner_op ))
+
   prepare_node: &prepare_node |
     ### Install required packages
     echo "Prepare machine"
@@ -88,6 +94,12 @@ meta:
     global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
       --value="${EXTERNAL_IP}" --domain="electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
       --project="${GCP_INFRA_PROJECT}"
+
+    ### ================== Add Miner server config
+    ### Regional A record
+    global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+      --value="${EXTERNAL_IP}" --domain="pool.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+      --project="${GCP_INFRA_PROJECT}"
     
     if [[ "$IN_LOCATION" == "europe" ]]; then
       ### Parent Electrumx record
@@ -98,6 +110,11 @@ meta:
       ### Parent Explorer record
       global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
         --value="${EXTERNAL_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
+        --project="${GCP_INFRA_PROJECT}"
+
+      ### Parent Miner record
+      global-ecosystem/scripts/dns-record.sh --name="io-bitcoin-global" --type="A" \
+        --value="${EXTERNAL_IP}" --domain="pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
         --project="${GCP_INFRA_PROJECT}"
     fi
 
@@ -119,6 +136,7 @@ meta:
     - export ENTRYPOINT_COMMAND=${BITCOIN_ENTRYPOINT}
     - export BTC_VERSION=${BITCOIN_VERSION}
     - export BTC_RELEASE=${BITCOIN_RELEASE}
+    - export REPO_INSTALL_PATH="bitcoin-global/bitcoin-global.private"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -131,6 +149,7 @@ meta:
     - export ENTRYPOINT_COMMAND=${BITCOIN_UPDATE_ENTRYPOINT}
     - export BTC_VERSION=${BITCOIN_UPDATE_VERSION}
     - export BTC_RELEASE=${BITCOIN_UPDATE_RELEASE}
+    - export REPO_INSTALL_PATH="bitcoin-global/bitcoin-global"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -156,7 +175,8 @@ meta:
     ### Install Bitcoin
     ./global-ecosystem/src/bitglobal/install-node.sh \
       -v ${BTC_VERSION} -r ${BTC_RELEASE} \
-      -t /binaries -d ${BITCOIN_DATA_DIR}
+      -t /binaries -d ${BITCOIN_DATA_DIR} \
+      -g ${REPO_INSTALL_PATH}
 
     ### Generate configuration
     cat <<CONFIG > /binaries/.bitglobal/bitglob.conf
@@ -186,9 +206,14 @@ meta:
     CONFIG
 
     ### Generate configuration
+    ### Deploy certificates for regional server
+    BITGLOBD_PATH=/binaries/bin/bitglobd
+    if [ ! -f /binaries/bin/bitglobd ]; then
+      BITGLOBD_PATH=\$(which bitglobd || echo "/binaries/bin/bitglobd")
+    fi
     cat <<SCRIPT > /binaries/bin/bitcoin-service.sh
     #!/bin/bash
-    /binaries/bin/bitglobd -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
+    \$BITGLOBD_PATH -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
     SCRIPT
     chmod +x /binaries/bin/bitcoin-service.sh
 
@@ -226,6 +251,13 @@ meta:
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_explorer ))
+    - exit
+    - EOF
+
+  miner_op: &miner_op
+    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_git ))
+    - (( grab meta.deploy_miner ))
     - exit
     - EOF
 
@@ -403,3 +435,49 @@ meta:
     systemctl daemon-reload && systemctl enable bitglobd
     systemctl daemon-reload && systemctl restart bitglobd
     echo "Service restarted! Success!"
+
+  deploy_miner: &deploy_miner |
+    ### Install required packages
+    apt-get install -y python-zope.interface python-twisted python-twisted-web python-argparse
+
+    ### Install explorer
+    rm -rf /global-p2pool
+    git clone https://github.com/bitcoin-global/global-p2pool.git /global-p2pool
+    cd /global-p2pool
+
+    ### Generate script
+    cat <<SCRIPT > /binaries/bin/miner-service.sh
+    #!/bin/bash
+    python2 /global-p2pool/run_p2pool.py \
+        --net bitglobal \
+        $MINER_ADDITIONAL_CMDS \
+        --give-author 0 \
+        --bitcoind-config-path /binaries/.bitglobal/bitglob.conf \
+        --bitcoind-rpc-port $BITCOIN_RPC_PORT \
+        --bitcoind-p2p-port $BITCOIN_PORT \
+        -a $MINER_ADDRESS
+    SCRIPT
+    chmod +x /binaries/bin/miner-service.sh
+
+    ### Generate service configuration
+    cat <<SRVCCFG > /etc/systemd/system/miner.service
+    [Unit]
+    Description=Bitcoin Miner service
+    After=bitglobd.target
+
+    [Service]
+    ExecStart=/binaries/bin/miner-service.sh
+    User=root
+    LimitNOFILE=8192
+    TimeoutStopSec=30min
+    Restart=on-failure
+    RestartSec=3
+
+    [Install]
+    WantedBy=multi-user.target
+    SRVCCFG
+
+    ### Run service
+    systemctl daemon-reload && systemctl enable miner
+    systemctl daemon-reload && systemctl restart miner
+    echo "Service deployed! Success!"

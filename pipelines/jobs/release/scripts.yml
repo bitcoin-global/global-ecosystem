@@ -226,5 +226,5 @@ meta:
       cp ~/tmp-tools/release-short.md ./doc/release-notes/release-notes-$GITHUB_TAG.md && git add ./doc/release-notes/release-notes-$GITHUB_TAG.md
       git diff-index --quiet HEAD || git commit -m "[docs] Adding release notes for $GITHUB_TAG"
       if [[ "$UPLOAD_RELEASE_CONFIGS" == "true" ]]; then
-        git push
+        # git push
       fi

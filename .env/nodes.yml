@@ -15,7 +15,7 @@
 - type: "main"
   # GCP Environment
   gcp:
-    machine_type: "n1-standard-1"
+    machine_type: "custom-2-10240" # 2cpu, 10gib
     hdd_size    : "400GB"
     project     : "bitcoin-global-mainnet"
     secrets     : 
@@ -31,8 +31,10 @@
   # Monitoring
   monitoring:
     netdata_room: "b99a57d2-397a-4d9d-9655-3113b1c8ccef"
-  # Node env config
-  port   : 8222
+
+  # Daemon config
+  port    : 8222
+  rpc_port: 18444
   # Before bootstrap
   command: "-skiphardforkibd -bootstrap"
   release: v0.19.1-bootstrap
@@ -41,6 +43,10 @@
   command_update: ""
   update_version: 0.19.2
   update_release: v0.19.2
+  # Mining stuff
+  miner_address : mtH8N2GuwPPLP9tEv82r9FnZdNxRYQp9V8
+  miner_port    : 9223
+  miner_commands: ""
 ### ===========================================================
 ### =================================================== TESTNET
 - type: "test"
@@ -61,7 +67,10 @@
   # Monitoring
   monitoring:
     netdata_room: "a9c21a87-65f9-4bd8-86b0-e9de831a597a"
-  port   : 18222
+  
+  # Daemon config
+  port    : 18222
+  rpc_port: 18444
   # Before bootstrap
   command: "-testnet -skiphardforkibd -bootstrap"
   release: v0.19.1-bootstrap
@@ -70,3 +79,7 @@
   command_update: "-testnet"
   update_release: v0.19.2
   update_version: 0.19.2
+  # Mining stuff
+  miner_address : mtH8N2GuwPPLP9tEv82r9FnZdNxRYQp9V8
+  miner_port    : 19223
+  miner_commands: "--testnet"

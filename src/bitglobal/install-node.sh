@@ -103,6 +103,10 @@ Usage: $0 [-h] [-v <version>] [-t <target_directory>] [-p <port>] [-b] [-u]
     Build and install Bitcoin Global from source.
     Default: $BUILD
 
+-g
+    Use this GitHub org/repo
+    Default: $REPO
+
 -u
     Uninstall Bitcoin Global.
 
@@ -348,10 +352,9 @@ install_build_dependencies() {
 build_bitcoin_global() {
     cd $TARGET_DIR
 
-    if [ ! -d "$TARGET_DIR/bitcoin-global" ]; then
-        print_info "\nDownloading Bitcoin Global source files.."
-        git clone $REPO_URL
-    fi
+    rm -rf ./bitcoin-global
+    print_info "\nDownloading Bitcoin Global source files.."
+    git clone $REPO_URL ./bitcoin-global
 
     # Tune gcc to use less memory on single board computers.
     cxxflags=""
@@ -677,7 +680,7 @@ uninstall_bitcoin_global() {
     fi
 }
 
-while getopts ":v:r:t:d:p:b:u" opt
+while getopts ":v:r:t:d:p:b:u:g:c" opt
 do
     case "$opt" in
         v)
@@ -700,6 +703,10 @@ do
             ;;
         u)
             UNINSTALL=1
+            ;;
+        g)
+            REPO=${OPTARG}
+            REPO_URL="https://github.com/${OPTARG}.git"
             ;;
         h)
             usage

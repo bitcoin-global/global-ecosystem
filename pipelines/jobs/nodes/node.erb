@@ -130,6 +130,10 @@ jobs:
         BITCOIN_UPDATE_ENTRYPOINT: <%= environment.command_update %>
         BITCOIN_NETWORK_TYPE     : <%= environment.type %>
         BITCOIN_PORT             : <%= environment.port %>
+        MINER_PORT               : <%= environment.miner_port %>
+        MINER_ADDRESS            : <%= environment.miner_address %>
+        MINER_ADDITIONAL_CMDS    : <%= environment.miner_commands %>
+        BITCOIN_RPC_PORT         : <%= environment.rpc_port %>
         BITCOIN_DATA_DIR         : /bitcoin-global
         BITCOIN_VERSION          : <%= environment.version %>
         BITCOIN_RELEASE          : <%= environment.release %>
@@ -187,6 +191,7 @@ jobs:
         BITCOIN_NETWORK_TYPE: <%= environment.type %>
         TRIGGER_OPERATION   : <%= operation.name %>
         TRIGGER_NET         : <%= environment.type %>
+        MINER_PORT          : <%= environment.miner_port %>
         SAVE_FILE           : <%= environment.type.upcase %>NET-NODES.md
         NODE_ZONES          : <%= environment.gcp.node_locations.join(',')  %>
         COMMIT_MESSAGE      : "[<%= environment.type %>net] Update node information for <%= operation.name %> action"
