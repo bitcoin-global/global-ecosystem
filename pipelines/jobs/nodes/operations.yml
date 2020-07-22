@@ -291,7 +291,8 @@ meta:
     NET=${BITCOIN_NETWORK_TYPE}net
     SSL_CERTFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.crt
     SSL_KEYFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.key
-    SERVICES=SSL://:50001,SSL://:50002,SSL://:51001,SSL://:51002
+    SERVICES=TCP://:50001,SSL://:50002,TCP://:51001,SSL://:51002,rpc://
+    REPORT_SERVICES=TCP://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001,SSL://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,TCP://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51001,SSL://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
     ALLOW_ROOT=1
     SRVCCFG
 
@@ -324,7 +325,7 @@ meta:
     apt install -y git python-software-properties software-properties-common nginx gcc g++ make
     add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
-    apt install -y python-certbot-nginx
+    apt install -y python-certbot-nginx npm
     python3 -m pip install cffi
     npm install pm2 --global
 
@@ -411,7 +412,7 @@ meta:
     BGEXP_BITGLOBD_USER=${BITCOIN_RPC_USERNAME}
     BGEXP_BITGLOBD_PASS=${BITCOIN_RPC_PASSWORD}
     BGEXP_ADDRESS_API=electrumx
-    BGEXP_ELECTRUMX_SERVERS=ssl://127.0.0.1:50001
+    BGEXP_ELECTRUMX_SERVERS=ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002
     CONFIG
 
     ### Generate service configuration
@@ -434,8 +435,8 @@ meta:
     SRVCCFG
 
     ### Run service
-    systemctl daemon-reload && systemctl enable bitglobd
-    systemctl daemon-reload && systemctl restart bitglobd
+    systemctl daemon-reload && systemctl enable explorer
+    systemctl daemon-reload && systemctl restart explorer
     echo "Service restarted! Success!"
 
   deploy_miner: &deploy_miner |
