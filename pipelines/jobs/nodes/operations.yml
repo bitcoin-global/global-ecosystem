@@ -54,6 +54,21 @@ meta:
     fi
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
+    ### Add Google Monitoring
+    curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
+    bash add-monitoring-agent-repo.sh
+    apt-get update -y
+    apt-get install -y stackdriver-agent
+    service stackdriver-agent start
+
+    ### Add Google Logging
+    curl -sSO https://dl.google.com/cloudagents/add-logging-agent-repo.sh
+    bash add-logging-agent-repo.sh
+    apt-get update -y
+    apt-get install -y google-fluentd
+    apt-get install -y google-fluentd-catch-all-config-structured
+    service google-fluentd start
+
   prepare_bitcoin_install: &prepare_bitcoin_install |
     ### Install required tools
     mkdir -p /binaries
@@ -213,11 +228,11 @@ meta:
     if [ ! -f /binaries/bin/bitglobd ]; then
       BITGLOBD_PATH=\$(which bitglobd || echo "/binaries/bin/bitglobd")
     fi
-    cat <<SCRIPT > /binaries/bin/bitcoin-service.sh
+    cat <<SCRIPT > /etc/bitcoin-service.sh
     #!/bin/bash
-    \$BITGLOBD_PATH -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
+    $BITGLOBD_PATH -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
     SCRIPT
-    chmod +x /binaries/bin/bitcoin-service.sh
+    chmod +x /etc/bitcoin-service.sh
 
     ### Generate service configuration
     cat <<SRVCCFG > /etc/systemd/system/bitglobd.service
@@ -226,7 +241,7 @@ meta:
     After=network.target
 
     [Service]
-    ExecStart=/binaries/bin/bitcoin-service.sh
+    ExecStart=/etc/bitcoin-service.sh
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min
@@ -449,7 +464,7 @@ meta:
     cd /global-p2pool
 
     ### Generate script
-    cat <<SCRIPT > /binaries/bin/miner-service.sh
+    cat <<SCRIPT > /etc/miner-service.sh
     #!/bin/bash
     python2 /global-p2pool/run_p2pool.py \
         --net bitglobal \
@@ -460,7 +475,7 @@ meta:
         --bitcoind-p2p-port $BITCOIN_PORT \
         -a $MINER_ADDRESS
     SCRIPT
-    chmod +x /binaries/bin/miner-service.sh
+    chmod +x /etc/miner-service.sh
 
     ### Generate service configuration
     cat <<SRVCCFG > /etc/systemd/system/miner.service
@@ -469,7 +484,7 @@ meta:
     After=bitglobd.target
 
     [Service]
-    ExecStart=/binaries/bin/miner-service.sh
+    ExecStart=/etc/miner-service.sh
     User=root
     LimitNOFILE=8192
     TimeoutStopSec=30min

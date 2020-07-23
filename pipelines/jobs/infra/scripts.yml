@@ -79,6 +79,21 @@ meta:
     fi
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
 
+    ### Add Google Monitoring
+    curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
+    bash add-monitoring-agent-repo.sh
+    apt-get update -y
+    apt-get install -y stackdriver-agent
+    service stackdriver-agent start
+
+    ### Add Google Logging
+    curl -sSO https://dl.google.com/cloudagents/add-logging-agent-repo.sh
+    bash add-logging-agent-repo.sh
+    apt-get update -y
+    apt-get install -y google-fluentd
+    apt-get install -y google-fluentd-catch-all-config-structured
+    service google-fluentd start
+
   deploy_seeders: &deploy_seeders |
     ### Install aditional requirements
     apt-get autoremove -y
@@ -218,14 +233,14 @@ meta:
     fi
     
     ### Add configuration files
-    cat <<CERTS > /etc/nginx/sites-available/bitcoin-global.io.conf
+    cat > /etc/nginx/sites-available/bitcoin-global.io.conf << 'CERTS'
     server {
       server_name bitcoin-global.io;
       listen 80;
       #listen [::]:80 ipv6only=on;
 
       location / {
-        return 301 https://bitcoin-global.io\$request_uri;
+        return 301 https://bitcoin-global.io$request_uri;
       }
     }
 
@@ -247,7 +262,7 @@ meta:
       index index.html;
 
       location / {
-        try_files \$uri \$uri/ =404;
+        try_files $uri $uri/ =404;
       }
 
       error_page 404 /404.html;
@@ -262,10 +277,10 @@ meta:
         internal;
       }
 
-      location ~* \.(jpg|jpeg|png|gif|ico)\$ {
+      location ~* \.(jpg|jpeg|png|gif|ico)$ {
         expires 30d;
       }
-      location ~* \.(css|js)\$ {
+      location ~* \.(css|js)$ {
         expires 7d;
       }
     }
