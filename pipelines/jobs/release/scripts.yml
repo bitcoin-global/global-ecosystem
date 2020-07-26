@@ -76,7 +76,7 @@ meta:
     
     ### Configure Bitcoin Global builder
     git clone https://github.com/bitcoin-global/bitcoin-global.git ./tmp-bitcoin-global
-    cp ./bitcoin-global/contrib/gitian-build.py ./gitian-build.py
+    cp ./tmp-bitcoin-global/contrib/gitian-build.py ./gitian-build.py
     chmod u+x ./gitian-build.py
     rm -rf ./tmp-bitcoin-global
 

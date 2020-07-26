@@ -7,6 +7,12 @@ meta_plan:
     privileged: true
     <: (( inject meta.release-params ))
 
+  vm-control-config: &vm-control-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    <: (( inject meta.release-params ))
+
   provision-vm:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
@@ -14,6 +20,11 @@ meta_plan:
     - (( grab meta.make_builder ))
     - (( grab meta.wait_for_builder ))
     - (( join "\n" meta.setup_builder ))
+
+  shutdown-vm:
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.builder_stop ))
+
 
 ### Pipeline config
 jobs:
@@ -43,5 +54,20 @@ jobs:
         args:
           - -exc
           - (( join "\n" meta_plan.provision-vm ))
+
+  # Whatever happens, make sure we have switched off the VM for cost reduction
+  ensure: &shudown
+    task: Shutdown Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.shutdown-vm ))
 
   <: ((inject slack-notify))
