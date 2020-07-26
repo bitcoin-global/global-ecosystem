@@ -1,8 +1,12 @@
 ---
 groups:
-- name: release
+- name: bitcoin
   jobs:
   - deploy-builder
-  - build
-  - publish
+  - release-bitcoin
+  - destroy-builder
+- name: electrum
+  jobs:
+  - deploy-builder
+  - release-electrum
   - destroy-builder

@@ -20,3 +20,6 @@ meta:
     git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
     git config --global user.name  "bitcoin-global-bot"
     git config --global user.email "bot@bitcoin-global.io"
+
+  configure_shared: &configure_shared | 
+    set -eo pipefail

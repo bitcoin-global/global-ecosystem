@@ -1,0 +1,10 @@
+---
+resources:
+- name: global-electrum
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.global-electrum-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: (( grab meta.overrides.global-electrum.branch || "master" ))

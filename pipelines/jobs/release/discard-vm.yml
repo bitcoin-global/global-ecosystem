@@ -19,12 +19,13 @@ jobs:
   plan:
   - in_parallel:
     - get: bitcoin-global
-      passed: [publish]
+      passed: [release-bitcoin]
+      trigger: true
+    - get: global-electrum
+      passed: [release-electrum]
       trigger: true
     - get: builder
-      passed: [publish]
     - get: global-ecosystem
-      passed: [publish]
 
   - task: Discard VM
     <<: *discard-config

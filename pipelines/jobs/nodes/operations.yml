@@ -155,6 +155,7 @@ meta:
     - export BTC_RELEASE=${BITCOIN_RELEASE}
     - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global.private"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_shared ))
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.prepare_bitcoin_install ))
@@ -168,6 +169,7 @@ meta:
     - export BTC_RELEASE=${BITCOIN_UPDATE_RELEASE}
     - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global"
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_shared ))
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.prepare_bitcoin_install ))
@@ -230,7 +232,7 @@ meta:
     fi
     cat <<SCRIPT > /etc/bitcoin-service.sh
     #!/bin/bash
-    $BITGLOBD_PATH -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
+    \$BITGLOBD_PATH -conf=/binaries/.bitglobal/bitglob.conf $ENTRYPOINT_COMMAND
     SCRIPT
     chmod +x /etc/bitcoin-service.sh
 
@@ -259,6 +261,7 @@ meta:
 
   electrum_op: &electrum_op
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_electrum ))
     - exit
@@ -266,6 +269,7 @@ meta:
 
   explorer_op: &explorer_op
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_explorer ))
     - exit
@@ -273,6 +277,7 @@ meta:
 
   miner_op: &miner_op
     - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_miner ))
     - exit

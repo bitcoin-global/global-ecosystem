@@ -7,12 +7,6 @@ meta_plan:
     privileged: true
     <: (( inject meta.release-params ))
 
-  publish-config: &publish-config
-    image: builder
-    timeout: 10m
-    privileged: true
-    <: (( inject meta.release-params ))
-
   vm-control-config: &vm-control-config
     image: builder
     timeout: 20m
@@ -23,19 +17,12 @@ meta_plan:
     - (( grab meta.configure_gcloud ))
     - (( grab meta.make_builder ))
 
-  build-release:
+  release-bitcoin:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
     - (( grab meta.get_btg_version ))
     - (( grab meta.wait_for_builder ))
-    - (( join "\n" meta.builder_release ))
-
-  publish-release:
-    - (( grab meta.configure_git ))
-    - (( grab meta.configure_gcloud ))
-    - (( grab meta.get_btg_version ))
-    - (( grab meta.wait_for_builder ))
-    - (( join "\n" meta.builder_publish ))
+    - (( join "\n" meta.builder_bitcoin ))
 
   shutdown-vm:
     - (( grab meta.configure_gcloud ))
@@ -45,7 +32,7 @@ meta_plan:
 jobs:
 
 ## Build step
-- name: build
+- name: release-bitcoin
   build_logs_to_retain: 3
   serial: true
   plan:
@@ -71,7 +58,7 @@ jobs:
           - -exc
           - (( join "\n" meta_plan.boot-vm ))
 
-  - task: Build release candidates
+  - task: Build and release Bitcoin
     <<: *build-config
     config:
       platform: linux
@@ -82,64 +69,7 @@ jobs:
         path: bash
         args:
           - -exc
-          - (( join "\n" meta_plan.build-release ))
-
-  # Whatever happens, make sure we have switched off the VM for cost reduction
-  ensure: &shudown
-    task: Shutdown Build VM
-    <<: *vm-control-config
-    config:
-      platform: linux
-      inputs:
-        - name: global-ecosystem
-      run:
-        user: root
-        path: bash
-        args:
-          - -exc
-          - (( join "\n" meta_plan.shutdown-vm ))
-
-  <: ((inject slack-notify))
-
-
-## Release step
-- name: publish
-  build_logs_to_retain: 3
-  serial: true
-  plan:
-  - in_parallel:
-    - get: bitcoin-global
-      passed: [build]
-    - get: builder
-      passed: [build]
-    - get: global-ecosystem
-      passed: [build]
-
-  - task: Boot Build VM
-    <<: *vm-control-config
-    config:
-      platform: linux
-      inputs:
-        - name: global-ecosystem
-      run:
-        user: root
-        path: bash
-        args:
-          - -exc
-          - (( join "\n" meta_plan.boot-vm ))
-
-  - task: Publish releases
-    <<: *publish-config
-    config:
-      platform: linux
-      inputs:
-        - name: bitcoin-global
-      run:
-        user: root
-        path: bash
-        args:
-          - -exc
-          - (( join "\n" meta_plan.publish-release ))
+          - (( join "\n" meta_plan.release-bitcoin ))
 
   # Whatever happens, make sure we have switched off the VM for cost reduction
   ensure: &shudown

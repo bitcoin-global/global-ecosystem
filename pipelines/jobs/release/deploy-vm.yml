@@ -23,10 +23,12 @@ jobs:
   plan:
 
   - in_parallel:
+    - get: builder
     - get: global-ecosystem
     - get: bitcoin-global
       trigger: true
-    - get: builder
+    - get: global-electrum
+      trigger: true
 
   - task: Provision VM
     <<: *provision-config

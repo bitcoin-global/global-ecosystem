@@ -6,6 +6,10 @@ meta:
 
   release-params: &release-params
     params:
+      # VERSIONING
+      ELECTRUM_VERSION : 4.0.2
+      ELECTRUM_DIFF_TAG: 4.0.1
+      BITCOIN_VERSION  : 0.19.2
       # Build config
       UPLOAD_RELEASE_CONFIGS: true
       #========================================================

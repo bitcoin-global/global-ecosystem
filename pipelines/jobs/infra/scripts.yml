@@ -48,6 +48,7 @@ meta:
 
   setup_nodeinfra: &setup_nodeinfra
     - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
+    - (( grab meta.configure_shared ))
     - (( grab meta.prepare_infra_node ))
     - (( grab meta.configure_git ))
     - (( grab meta.import_gpg ))
@@ -57,6 +58,7 @@ meta:
 
   setup_io: &setup_io
     - gcloud beta compute ssh --zone $MACHINE_ZONE $MACHINE_NAME --project $GCP_PROJECT <<ENDSSH
+    - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy-landing-page ))
     - exit

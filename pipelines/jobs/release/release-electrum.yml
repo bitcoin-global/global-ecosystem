@@ -1,0 +1,88 @@
+---
+### Resource overrides
+meta_plan:
+  build-config: &build-config
+    image: builder
+    timeout: 6h
+    privileged: true
+    <: (( inject meta.release-params ))
+
+  vm-control-config: &vm-control-config
+    image: builder
+    timeout: 20m
+    privileged: true
+    <: (( inject meta.release-params ))
+
+  boot-vm:
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.make_builder ))
+
+  electrum-release:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.wait_for_builder ))
+    - (( join "\n" meta.builder_electrum ))
+
+  shutdown-vm:
+    - (( grab meta.configure_gcloud ))
+    - (( grab meta.builder_stop ))
+
+### Pipeline config
+jobs:
+
+## Build step
+- name: release-electrum
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: global-electrum
+      passed: [deploy-builder]
+      trigger: true
+    - get: builder
+      passed: [deploy-builder]
+    - get: global-ecosystem
+      passed: [deploy-builder]
+
+  - task: Boot Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.boot-vm ))
+
+  - task: Build and release Electrum
+    <<: *build-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-electrum
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.electrum-release ))
+
+  # Whatever happens, make sure we have switched off the VM for cost reduction
+  ensure: &shudown
+    task: Shutdown Build VM
+    <<: *vm-control-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.shutdown-vm ))
+
+  <: ((inject slack-notify))
