@@ -216,7 +216,7 @@ meta:
   deploy-landing-page: &deploy-landing-page |
     ### Install requirements
     apt update -y && apt upgrade -y
-    apt install -y git python-software-properties software-properties-common nginx gcc g++ make python3-pip
+    apt install -y git software-properties-common nginx gcc g++ make python3-pip
     add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
     apt install -y python-certbot-nginx
@@ -246,7 +246,7 @@ meta:
     ln -s /etc/nginx/sites-available/bitcoin-global.io.conf /etc/nginx/sites-enabled/ || echo "Already present"
     rm -rf /etc/nginx/sites-enabled/default
     rm -rf /etc/nginx/sites-available/default
-    fuser -k 80/tcp
-    fuser -k 443/tcp
+    fuser -k 80/tcp  || echo "skipping"
+    fuser -k 443/tcp || echo "skipping"
 
     service nginx restart

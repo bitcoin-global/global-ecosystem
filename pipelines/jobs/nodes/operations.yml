@@ -407,8 +407,8 @@ meta:
     ln -s /etc/nginx/sites-available/*.conf /etc/nginx/sites-enabled/  || echo "Already present"
     rm -rf /etc/nginx/sites-enabled/default
     rm -rf /etc/nginx/sites-available/default
-    fuser -k 80/tcp
-    fuser -k 443/tcp
+    fuser -k 80/tcp  || echo "skipping"
+    fuser -k 443/tcp || echo "skipping"
     service nginx restart
 
     cd /etc/ssl/certs
@@ -432,7 +432,9 @@ meta:
     BGEXP_BITGLOBD_USER=${BITCOIN_RPC_USERNAME}
     BGEXP_BITGLOBD_PASS=${BITCOIN_RPC_PASSWORD}
     BGEXP_ADDRESS_API=electrumx
-    BGEXP_ELECTRUMX_SERVERS=ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002
+    BGEXP_ELECTRUMX_SERVERS=ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
+    BGEXP_RPC_CONCURRENCY=64
+    BGEXP_PRIVACY_MODE=false
     CONFIG
 
     ### Generate service configuration
