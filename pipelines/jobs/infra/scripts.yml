@@ -79,7 +79,7 @@ meta:
     if [ ! -f /opt/netdata/usr/bin/netdata-claim.sh ]; then
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
     fi
-    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud || echo "Already claimed"
 
     ### Add Google Monitoring
     curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
@@ -235,58 +235,7 @@ meta:
     fi
     
     ### Add configuration files
-    cat > /etc/nginx/sites-available/bitcoin-global.io.conf << 'CERTS'
-    server {
-      server_name bitcoin-global.io;
-      listen 80;
-      #listen [::]:80 ipv6only=on;
-
-      location / {
-        return 301 https://bitcoin-global.io$request_uri;
-      }
-    }
-
-    server {
-      server_name bitcoin-global.io;
-      listen 443 ssl http2;
-      #listen [::]:443 ssl http2 ipv6only=on;
-
-      ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
-      ssl_ciphers 'EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH';
-      ssl_prefer_server_ciphers on;
-      ssl_session_cache shared:SSL:10m;
-      ssl_dhparam /etc/ssl/certs/dhparam.pem;
-
-      ssl_certificate     /etc/letsencrypt/live/bitcoin-global.io/cert.pem;
-      ssl_certificate_key /etc/letsencrypt/live/bitcoin-global.io/privkey.pem;
-
-      root /var/www/bitcoin-global.io;
-      index index.html;
-
-      location / {
-        try_files $uri $uri/ =404;
-      }
-
-      error_page 404 /404.html;
-      location = /404.html {
-        root /var/www/bitcoin-global.io;
-        internal;
-      }
-
-      error_page 500 502 503 504 /50x.html;
-      location = /50x.html {
-        root /var/www/bitcoin-global.io;
-        internal;
-      }
-
-      location ~* \.(jpg|jpeg|png|gif|ico)$ {
-        expires 30d;
-      }
-      location ~* \.(css|js)$ {
-        expires 7d;
-      }
-    }
-    CERTS
+    cp ./bitcoin-global.io/nginx.conf /etc/nginx/sites-available/bitcoin-global.io.conf
 
     cd /etc/ssl/certs
     if [ ! -f dhparam.pem ]; then
@@ -294,7 +243,7 @@ meta:
     fi
 
     ### Activate service
-    ln -s /etc/nginx/sites-available/bitcoin-global.io.conf /etc/nginx/sites-enabled/
+    ln -s /etc/nginx/sites-available/bitcoin-global.io.conf /etc/nginx/sites-enabled/ || echo "Already present"
     rm -rf /etc/nginx/sites-enabled/default
     rm -rf /etc/nginx/sites-available/default
     fuser -k 80/tcp

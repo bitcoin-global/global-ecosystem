@@ -45,14 +45,13 @@ meta:
       gnupg2 ca-certificates git software-properties-common \
       python3.6 sudo nano ruby wget curl pigz \
       autoconf dirmngr gosu dnsutils gpg wget jq npm
-    service apt-cacher-ng restart
 
     ### Install monitoring
     echo "Install monitoring"
     if [ ! -f /opt/netdata/usr/bin/netdata-claim.sh ]; then
       bash <(curl -Ss https://my-netdata.io/kickstart-static64.sh) --dont-wait --no-updates --stable-channel --disable-telemetry
     fi
-    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud
+    /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud || echo "Already claimed"
 
     ### Add Google Monitoring
     curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
@@ -200,14 +199,15 @@ meta:
     ### Generate configuration
     cat <<CONFIG > /binaries/.bitglobal/bitglob.conf
     listen=1
-    maxconnections=64
+    maxconnections=256
     upnp=1
     txindex=1
 
-    dbcache=64
-    par=2
-    checkblocks=24
-    checklevel=0
+    dbcache=4096
+    par=-1
+    banscore=10
+    checkblocks=64
+    checklevel=3
 
     disablewallet=1
     datadir=${BITCOIN_DATA_DIR}
@@ -404,7 +404,7 @@ meta:
     fi
 
     ### Enable nginx mapping
-    ln -s /etc/nginx/sites-available/*.conf /etc/nginx/sites-enabled/
+    ln -s /etc/nginx/sites-available/*.conf /etc/nginx/sites-enabled/  || echo "Already present"
     rm -rf /etc/nginx/sites-enabled/default
     rm -rf /etc/nginx/sites-available/default
     fuser -k 80/tcp
