@@ -296,7 +296,9 @@ meta:
 
     ### =================================================
     ### Sign and publish
-    ./contrib/sign.sh
+    CERT_FILE=${CERT_FILE:-~/.gpg/cert.pem} \
+    KEY_FILE=${KEY_FILE:-~/.gpg/cert_key.pem} \
+    ./contrib/build-wine/sign.sh
     
     ### Collect binaries
     mv ./contrib/build-wine/signed/*-portable.exe ./dist/electrum-global-\${ELECTRUM_VERSION}-portable.exe || echo "Already imported"
