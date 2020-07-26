@@ -342,7 +342,7 @@ meta:
   deploy_explorer: &deploy_explorer |
     ### Install requirements
     apt update -y && apt upgrade -y
-    apt install -y git python-software-properties software-properties-common nginx gcc g++ make
+    apt install -y git software-properties-common nginx gcc g++ make
     add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
     apt install -y python-certbot-nginx npm
