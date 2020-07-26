@@ -345,7 +345,7 @@ meta:
     apt install -y git software-properties-common nginx gcc g++ make python3-pip
     add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
-    apt install -y python-certbot-nginx npm
+    apt install -y python-certbot-nginx npm python3-gi
     python3 -m pip install cffi
     npm install pm2 --global
 

@@ -8,17 +8,17 @@ env_config_file = File.expand_path(File.dirname(__FILE__) + "../../../../") + '/
 net_config      = JSON.parse(YAML.load_file(env_config_file).to_json, object_class: OpenStruct)
 operations      = JSON.parse(YAML.load('
 - id: deploy
-  name: deploy-nodes
+  name: deploy-bootstrap
+- id: update
+  name: deploy-latest
 - id: stop
   name: stop-nodes
-- id: update
-  name: update-nodes
 - id: electrum
-  name: configure-electrum
+  name: electrum
 - id: explorer
-  name: configure-explorer
+  name: explorer
 - id: miner
-  name: configure-miners
+  name: miner
 ').to_json, object_class: OpenStruct)
 
 ### ---------- Parse node data
