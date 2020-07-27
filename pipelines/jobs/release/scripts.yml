@@ -186,6 +186,8 @@ meta:
       ### Push detached signatures
       cd ~/global.detached.sigs
       git add .
+      git branch -d $GITHUB_TAG || echo "skipping deletion"
+      git push origin --delete $GITHUB_TAG || echo "skipping deletion"
       git checkout -B $GITHUB_TAG
       git commit -m "cd: Add $GITHUB_TAG detached sigs"
       if [[ "$UPLOAD_RELEASE_CONFIGS" == "true" ]]; then
