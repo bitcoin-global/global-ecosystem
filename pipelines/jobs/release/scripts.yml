@@ -213,6 +213,9 @@ meta:
       ### Generate release report
       LAST_COMMIT=\$(git --git-dir ~/bitcoin-global/.git rev-list --ancestry-path 58ba7c314d552cea8cb024960a8504577aee586f..HEAD | tail -1)
       FROM_COMMIT=\$(git --git-dir ~/bitcoin-global/.git describe --tags --abbrev=0 || echo \$LAST_COMMIT)
+      if [[ "\$FROM_COMMIT" == "v$GITHUB_TAG" ]]; then
+        FROM_COMMIT="\$LAST_COMMIT"
+      fi
       RELEASE_DATA=\$(git --git-dir ~/bitcoin-global/.git log \$FROM_COMMIT..HEAD --no-merges \
                   --pretty=format:'* **[\`%h\`](https://github.com/bitcoin-global/bitcoin-global/commit/%H)**  %s' \
                   -i -E --grep=".*: .*")
