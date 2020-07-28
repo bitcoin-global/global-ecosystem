@@ -203,7 +203,7 @@ meta:
     upnp=1
     txindex=1
 
-    dbcache=4096
+    dbcache=8192
     par=-1
     banscore=10
     checkblocks=64
