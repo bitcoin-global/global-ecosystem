@@ -481,7 +481,7 @@ meta:
         --bitcoind-rpc-port $BITCOIN_RPC_PORT \
         --bitcoind-p2p-port $BITCOIN_PORT \
         --max-conns 1024 \
-        --outgoing-conns 64 \
+        --outgoing-conns 10 \
         -a $MINER_ADDRESS
     SCRIPT
     chmod +x /etc/miner-service.sh
