@@ -224,7 +224,7 @@ meta:
 
       echo -e "## Release v$GITHUB_TAG (\$DATE)\n\n" > release.md
       echo -e "### :globe_with_meridians: Getting started\n" >> release.md
-      echo -e "* [Download Bitcoin Global](https://github.com/bitcoin-global/bitcoin-global/releases/tag/$GITHUB_TAG)" >> release.md
+      echo -e "* [Download Bitcoin Global](https://github.com/bitcoin-global/bitcoin-global/releases/tag/v$GITHUB_TAG)" >> release.md
       echo -e "* [Install Bitcoin Global](https://bitcoin-global.io/getting-started)" >> release.md
       echo -e "* [Requirements](https://bitcoin-global.io/getting-started#requirements)" >> release.md
       echo -e "* [Release notes](https://github.com/bitcoin-global/bitcoin-global/tree/master/doc/release-notes)\n\n---\n\n" >> release.md
@@ -330,7 +330,7 @@ meta:
     echo -e "### :globe_with_meridians: Getting started\n" >> release.md
     echo -e "* [Getting started](https://bitcoin-global.io/#getting-started)" >> release.md
     echo -e "* [Download Bitcoin Global](https://github.com/bitcoin-global/bitcoin-global/releases/tag/v$BITCOIN_VERSION)" >> release.md
-    echo -e "* [Download Electrum Global](https://github.com/bitcoin-global/global-electrum/releases/tag/v$ELECTRUM_VERSION)" >> release.md
+    echo -e "* [Download Electrum Global](https://github.com/bitcoin-global/global-electrum/releases/tag/$ELECTRUM_VERSION)" >> release.md
     echo -e "* [Requirements](https://bitcoin-global.io/#requirements)" >> release.md
     echo -e "### :checkered_flag: Release notes:\n \$RELEASE_DATA\n\n" >> release.md
     echo -e "### :busts_in_silhouette: Committers:\n \$COMMITTERS\n\n---" >> release.md
