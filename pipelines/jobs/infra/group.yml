@@ -4,3 +4,6 @@ groups:
   jobs:
   - deploy-dns-seeds
   - deploy-landing-page
+- name: stats
+  jobs:
+  - mainnet-ibd

@@ -17,7 +17,7 @@ meta:
       GPG_SUBKEY                    : ((gpg.subkey))
       RELEASE_CERT                  : ((cert.cert))
       RELEASE_KEY                   : ((cert.key))
-      CLOUDFLARE_EMAIL              : hivemindf@gmail.com
+      CLOUDFLARE_EMAIL              : hi@residence-of-code.com
       CLOUDFLARE_API_TOKEN          : ((cf.api-token))
       TERM                          : xterm-256color
       RELEASE_TYPE                  : wlm
@@ -34,3 +34,26 @@ meta:
       MACHINE_DISK_SIZE  : 20GB
       MACHINE_DISK_TYPE  : pd-standard
       MACHINE_SCRIPT_PATH: /tmp/builder-startup.sh
+
+  mainnet-params: &mainnet-params
+    params:
+      #========================================================
+      # Service config
+      SERVICE_ACCOUNT               : ((gcp.service-account-email-mainnet))
+      GCLOUD_CREDENTIALS            : ((gcp.service-account-mainnet))
+      GCP_PROJECT                   : bitcoin-global-mainnet
+      GITHUB_TOKEN                  : ((git.token))
+      SSH_PRIVATE_KEY               : ((ssh.private))
+      SSH_PUBLIC_KEY                : ((ssh.public))
+      SSH_USER                      : ((ssh.username))
+      GPG_SIGNER                    : ((gpg.signer))
+      GPG_PUBLIC                    : ((gpg.public))
+      GPG_PRIVATE                   : ((gpg.private))
+      GPG_SUBKEY                    : ((gpg.subkey))
+      RELEASE_CERT                  : ((cert.cert))
+      RELEASE_KEY                   : ((cert.key))
+      CLOUDFLARE_EMAIL              : hi@residence-of-code.com
+      CLOUDFLARE_API_TOKEN          : ((cf.api-token))
+      TERM                          : xterm-256color
+      RELEASE_TYPE                  : wlm
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json

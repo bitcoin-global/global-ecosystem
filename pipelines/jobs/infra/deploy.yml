@@ -7,6 +7,12 @@ meta_plan:
     privileged: true
     <: (( inject meta.config-params ))
 
+  mainnet-config: &mainnet-config
+    image: builder
+    timeout: 1h
+    privileged: true
+    <: (( inject meta.mainnet-params ))
+
   provision-vm:
     - (( grab meta.configure_git ))
     - (( grab meta.configure_gcloud ))
@@ -21,6 +27,15 @@ meta_plan:
     - (( grab meta.wait_for_nodeinfra ))
     - (( join "\n" meta.setup_io ))
 
+  check-ibd-status:
+    - (( grab meta.configure_git ))
+    - (( grab meta.configure_gcloud ))
+    - (( join "\n" meta.check_ibd ))
+
+resources:
+- name: 1h
+  type: time
+  source: {interval: 1h}
 
 jobs:
 - name: deploy-dns-seeds
@@ -70,5 +85,28 @@ jobs:
         args:
           - -exc
           - (( join "\n" meta_plan.deploy-io ))
+  <: ((inject slack-notify))
+
+- name: mainnet-ibd
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+
+  - in_parallel:
+    - get: builder
+    - get: 1h
+      trigger: true
+
+  - task: Mainnet IBD status
+    <<: *mainnet-config
+    config:
+      platform: linux
+      inputs: []
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.check-ibd-status ))
   <: ((inject slack-notify))
 
