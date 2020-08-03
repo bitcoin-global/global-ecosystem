@@ -11,8 +11,8 @@ operations      = JSON.parse(YAML.load('
   name: deploy-bootstrap
 - id: update
   name: deploy-latest
-- id: stop
-  name: stop-nodes
+- id: restart
+  name: restart-nodes
 - id: electrum
   name: electrum
 - id: explorer

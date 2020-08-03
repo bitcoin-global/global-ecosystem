@@ -37,9 +37,9 @@ jobs:
     - get: builder
     - get: global-ecosystem
     - get: bitcoin-global
-      trigger: true
+      # trigger: true
     - get: global-electrum
-      trigger: true
+      # trigger: true
 
   - task: Provision VM
     <<: *provision-config
