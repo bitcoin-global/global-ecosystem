@@ -38,7 +38,7 @@ jobs:
   - in_parallel:
     - get: global-electrum
       passed: [deploy-builder]
-      trigger: true
+      # trigger: true
     - get: builder
       passed: [deploy-builder]
     - get: global-ecosystem

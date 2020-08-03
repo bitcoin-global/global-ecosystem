@@ -39,7 +39,7 @@ jobs:
   - in_parallel:
     - get: bitcoin-global
       passed: [deploy-builder]
-      trigger: true
+      # trigger: true
     - get: builder
       passed: [deploy-builder]
     - get: global-ecosystem
