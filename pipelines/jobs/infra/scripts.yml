@@ -258,21 +258,21 @@ meta:
     cd ./nodes
 
     echo -e "## **Mainnet** IBD status\n\n" > IBD-STATUS.md
-    echo "Node | Progress" >> IBD-STATUS.md
+    echo "Node | Block" >> IBD-STATUS.md
     echo "--- | ---" >> IBD-STATUS.md
     declare -a locations=("asia-east2-a" "australia-southeast1-b" "europe-west1-b" "us-central1-a")
     for location in "${locations[@]}"
     do
-        result=$(gcloud beta compute ssh --zone "$location" "main--$location-global-node" --project "bitcoin-global-mainnet" --command \
-            "sudo /binaries/bin/bitglob-cli -conf=/binaries/.bitglobal/bitglob.conf getblockchaininfo | jq -r .verificationprogress")
-        result=${result:--0}
-        result=$(echo "scale=3; $result * 100 / 1" | bc)
-        printf "\`%s\` | %s%%\n" $location $result >> IBD-STATUS.md
+      result=$(gcloud beta compute ssh --zone "$location" "main--$location-global-node" --project "bitcoin-global-mainnet" --command \
+          "sudo /binaries/bin/bitglob-cli -conf=/binaries/.bitglobal/bitglob.conf getblockchaininfo | jq -r .blocks" || echo '0')
+      printf "\`%s\` | %s\n" $location $result >> IBD-STATUS.md
     done
 
     ### Get timestamp
     timestamp=$(date '+%d/%m/%Y %H:%M:%S')
-    echo -e "\n\n**Note** - Progress value of *0%* means RPC is not fully loaded or node is being reinitialized. This will likely change to real value in couple of hours.\n" >> IBD-STATUS.md
+    echo -e "\n\n**Note**" >> IBD-STATUS.md
+    echo -e "* Block **0** mean RPC is not fully loaded or node is being reinitialized. This will likely change to real value in couple of hours." >> IBD-STATUS.md
+    echo -e "* Block **638591** means node is fully synchronized.\n" >> IBD-STATUS.md
     echo -e "\nLast update: \`$timestamp\`" >> IBD-STATUS.md
     
     # Push
