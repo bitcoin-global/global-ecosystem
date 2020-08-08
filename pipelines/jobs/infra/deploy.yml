@@ -33,9 +33,10 @@ meta_plan:
     - (( join "\n" meta.check_ibd ))
 
 resources:
-- name: 1h
+- name: timer-24h
   type: time
-  source: {interval: 1h}
+  icon: clock-outline
+  source: {interval: 24h}
 
 jobs:
 - name: deploy-dns-seeds
@@ -94,7 +95,7 @@ jobs:
 
   - in_parallel:
     - get: builder
-    - get: 1h
+    - get: timer-24h
       trigger: true
 
   - task: Mainnet IBD status
