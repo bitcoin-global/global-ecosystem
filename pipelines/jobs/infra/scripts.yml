@@ -232,8 +232,8 @@ meta:
     cp ./bitcoin-global.io/nginx.conf /etc/nginx/sites-available/bitcoin-global.io.conf
 
     cd /etc/ssl/certs
-    if [ ! -f dhparam.pem ]; then
-      openssl dhparam -out dhparam.pem 4096
+    if [ ! -f /etc/ssl/certs/dhparam.pem ]; then
+      openssl dhparam -out dhparam.pem 2048
     fi
 
     ### Activate service
@@ -250,14 +250,16 @@ meta:
     # Clone repo
     git clone https://github.com/bitcoin-global/global-nodes.git ./nodes
     cd ./nodes
+    apk update && apk add bind-tools
 
     echo -e "## **Mainnet** IBD status\n\n" > IBD-STATUS.md
     echo "Node | Block" >> IBD-STATUS.md
     echo "--- | ---" >> IBD-STATUS.md
-    declare -a locations=("asia-east2-a" "australia-southeast1-b" "europe-west1-b" "us-central1-a")
+    declare -a locations=("asia" "australia" "europe" "us")
     for location in "${locations[@]}"
     do
-      result=$(gcloud beta compute ssh --zone "$location" "main--$location-global-node" --project "bitcoin-global-mainnet" --command \
+      SERVER_IP=$(dig +short explorer.$location.mainnet.bitcoin-global.io)
+      result=$(ssh -o StrictHostKeyChecking=no root@${SERVER_IP} \
           "sudo /binaries/bin/bitglob-cli -conf=/binaries/.bitglobal/bitglob.conf getblockchaininfo | jq -r .blocks" || echo '0')
       printf "\`%s\` | %s\n" $location $result >> IBD-STATUS.md
     done
@@ -265,12 +267,12 @@ meta:
     ### Get timestamp
     timestamp=$(date '+%d/%m/%Y %H:%M:%S')
     echo -e "\n\n**Note**" >> IBD-STATUS.md
-    echo -e "* Block **0** mean RPC is not fully loaded or node is being reinitialized. This will likely change to real value in couple of hours." >> IBD-STATUS.md
+    echo -e "* Block **0** mean RPC is not working. Check server status." >> IBD-STATUS.md
     echo -e "* Block **638591** means node is fully synchronized.\n" >> IBD-STATUS.md
     echo -e "\nLast update: \`$timestamp\`" >> IBD-STATUS.md
     
     # Push
     git fetch && git pull
     git add ./IBD-STATUS.md
-    git commit -m "ci: Update IBD status"
+    git diff-index --quiet HEAD || git commit -m "ci: Update IBD status"
     git push -f

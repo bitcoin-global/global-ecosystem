@@ -29,7 +29,7 @@ meta_plan:
 
   check-ibd-status:
     - (( grab meta.configure_git ))
-    - (( grab meta.configure_gcloud ))
+    - (( grab meta.servers_ssh ))
     - (( join "\n" meta.check_ibd ))
 
 resources:
@@ -103,6 +103,9 @@ jobs:
     config:
       platform: linux
       inputs: []
+      params:
+        SERVER_SSH_PRIVATE_KEY: ((ssh.hivemindf-private))
+        SERVER_SSH_PUBLIC_KEY : ((ssh.hivemindf-public))
       run:
         user: root
         path: bash

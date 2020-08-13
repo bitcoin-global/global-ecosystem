@@ -311,6 +311,12 @@ meta:
     python3 -m pip install cffi
     npm install pm2 --global
 
+    ### Install dh params
+    cd /etc/ssl/certs
+    if [ ! -f /etc/ssl/certs/dhparam.pem ]; then
+      openssl dhparam -out dhparam.pem 2048
+    fi
+
     ### Deploy certificates for regional server
     if [ ! -f /etc/letsencrypt/live/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem ]; then
       certbot --nginx --agree-tos -n $CERT_TYPE \
@@ -372,11 +378,6 @@ meta:
     fuser -k 80/tcp  || echo "skipping"
     fuser -k 443/tcp || echo "skipping"
     service nginx restart
-
-    cd /etc/ssl/certs
-    if [ ! -f dhparam.pem ]; then
-      openssl dhparam -out dhparam.pem 4096
-    fi
 
     ### Install explorer
     rm -rf /explorer
