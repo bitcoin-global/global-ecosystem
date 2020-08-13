@@ -141,7 +141,7 @@ meta:
     - EOF
 
   restart_node: &restart_node |
-    ssh -o -t StrictHostKeyChecking=no root@${SERVER_IP} 'sudo systemctl reboot'
+    ssh -o StrictHostKeyChecking=no root@${SERVER_IP} 'sudo systemctl reboot'
 
   shared_task: &shared_task
     - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
