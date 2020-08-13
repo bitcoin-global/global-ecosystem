@@ -14,39 +14,14 @@ meta:
     git commit -m "$COMMIT_MESSAGE"
 
   update_nodelist: &update_nodelist |
-    ### Get timestamp
-    timestamp=$(date '+%d/%m/%Y %H:%M:%S')
-    
     ### Update nodelist data
     cd ./global-nodes
     echo "Updating node list"
-    echo "Instance name | Public IP | ElectrumX | Explorer | Mining pool | Status" > $SAVE_FILE
-    echo "--- | --- | --- | --- | --- | ---" >> $SAVE_FILE
 
-    for VM_ZONE in $(echo ${NODE_ZONES} | sed "s/,/ /g")
-    do
-      IN_LOCATION=$(echo "$VM_ZONE" | cut -f1 -d"-")
-      VM_DATA=$(gcloud beta compute instances describe $TRIGGER_NET--$VM_ZONE-global-node --zone $VM_ZONE --format json)
-      name=$(echo ${VM_DATA} | jq .name | tr -d '"')
-      public_ip=$(echo ${VM_DATA} | jq .networkInterfaces[0].accessConfigs[0].natIP | tr -d '"')
-      status=$(echo ${VM_DATA} | jq .status | tr -d '"')
-      DATA="\`$name\`"
-      DATA="$DATA | [$public_ip]($public_ip)"
-      DATA="$DATA | [electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
-      DATA="$DATA | [explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](https://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)"
-      DATA="$DATA | [pool.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:$MINER_PORT](http://pool.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:$MINER_PORT)"
-      DATA="$DATA | $status"
-      echo "$DATA" >> $SAVE_FILE
-    done
+    ### Add result
+    echo -e "$RESULT" > $SAVE_FILE
 
-    echo -e "\nMain servers (in Europe):\n" >> $SAVE_FILE
-    echo -e "* **ElectrumX** - [electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](http://electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
-    echo -e "* **Explorer** - [${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io](https://${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io)" >> $SAVE_FILE
-    echo -e "* **Mining pool** - [pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:$MINER_PORT](http://pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:$MINER_PORT)" >> $SAVE_FILE
-    echo -e "\n\n\`Note\` - All **ElectrumX** servers exposed publicly on SSL ports on \`{50001, 50002, 51001, 51002}\`" >> $SAVE_FILE
-    echo -e "\nLast update: \`$timestamp\`" >> $SAVE_FILE
-
-    # Sync changes
+    ### Sync changes
     git fetch && git pull
     git add .
     git commit -m "$COMMIT_MESSAGE"

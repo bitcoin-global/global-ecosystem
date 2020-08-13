@@ -1,42 +1,38 @@
 ---
 meta:
-  # Git and GCloud already configured for each operation
-  destroy: &destroy
-  - (( grab meta.destroy_node ))
-
-  stop: &stop
-  - (( grab meta.stop_node ))
-
+  # Git already configured for each operation
   restart: &restart
+  - (( grab meta.init_config ))
+  - (( grab meta.wait_for_node ))
   - (( grab meta.restart_node ))
 
+  shared: &shared
+  - (( grab meta.init_config ))
+  - (( grab meta.wait_for_node ))
+  - (( join "\n" meta.shared_task ))
+
   deploy: &deploy
-  - (( grab meta.make_node ))
-  - (( grab meta.configure_gcloud ))
+  - (( grab meta.init_config ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.install_node ))
 
   update: &update
-  - (( grab meta.make_node ))
-  - (( grab meta.configure_gcloud ))
+  - (( grab meta.init_config ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.update_node ))
 
   electrum: &electrum
-  - (( grab meta.make_node ))
-  - (( grab meta.configure_gcloud ))
+  - (( grab meta.init_config ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.electrum_op ))
 
   explorer: &explorer
-  - (( grab meta.make_node ))
-  - (( grab meta.configure_gcloud ))
+  - (( grab meta.init_config ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.explorer_op ))
 
   miner: &miner
-  - (( grab meta.make_node ))
-  - (( grab meta.configure_gcloud ))
+  - (( grab meta.init_config ))
   - (( grab meta.wait_for_node ))
   - (( join "\n" meta.miner_op ))
 
@@ -56,21 +52,6 @@ meta:
     fi
     /opt/netdata/usr/bin/netdata-claim.sh -token=${NETDATA_INFRA_TOKEN} -rooms=${NETDATA_INFRA_ROOM} -url=https://app.netdata.cloud || echo "Already claimed"
 
-    ### Add Google Monitoring
-    curl -sSO https://dl.google.com/cloudagents/add-monitoring-agent-repo.sh
-    bash add-monitoring-agent-repo.sh
-    apt-get update -y
-    apt-get install -y stackdriver-agent
-    service stackdriver-agent start
-
-    ### Add Google Logging
-    curl -sSO https://dl.google.com/cloudagents/add-logging-agent-repo.sh
-    bash add-logging-agent-repo.sh
-    apt-get update -y
-    apt-get install -y google-fluentd
-    apt-get install -y google-fluentd-catch-all-config-structured
-    service google-fluentd start
-
   prepare_bitcoin_install: &prepare_bitcoin_install |
     ### Install required tools
     mkdir -p /binaries
@@ -79,69 +60,49 @@ meta:
     git clone ${GIT_REPO_ECOSYSTEM} ./global-ecosystem
     chmod +x ./global-ecosystem/src/bitglobal/install-node.sh
 
-  make_node: &make_node |
-    ### Deploy Node VM on GCP
-    global-ecosystem/scripts/add-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE" \
-      --size="$NODE_SIZE" \
-      --disk-size="$NODE_DISK_SIZE" \
-      --disk-type="$NODE_DISK_TYPE" \
-      --tags="bitcoin-global,bitcoin-$NODE_TYPE" \
-      --static-ip
-
-    ### Get IP
-    VM_REGION=${NODE_ZONE:0:-2}
-    export IN_LOCATION=$(echo "$NODE_ZONE" | cut -f1 -d"-")
-    ADDRESS_NAME=$NODE_NAME-address
-    EXTERNAL_IP=$(gcloud compute addresses describe $ADDRESS_NAME --region $VM_REGION --format json | jq '.address' | tr -d '"')
+  init_config: &init_config |
+    ### Dump SSH keys
+    mkdir -p /root/.ssh
+    echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa
+    echo "${SSH_PUBLIC_KEY}"  > /root/.ssh/id_rsa.pub
+    chmod 600 /root/.ssh/id_rsa
+    chmod 644 /root/.ssh/id_rsa.pub
     
-    ## LOGIN TO INFRA PROJECT
-    ### Configure Google Cloud authentication
-    echo "${GCLOUD_INFRA_CREDENTIALS}" > $GOOGLE_APPLICATION_CREDENTIALS
-    gcloud auth activate-service-account \
-      $SERVICE_INFRA_ACCOUNT --key-file=${GOOGLE_APPLICATION_CREDENTIALS} --project=$GCP_INFRA_PROJECT
-
     ### ================== Add Explorer server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-      --project="${GCP_INFRA_PROJECT}"
+      --value="${SERVER_IP}" --domain="explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
     
     ### ================== Add ElectrumX server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-      --project="${GCP_INFRA_PROJECT}"
+      --value="${SERVER_IP}" --domain="electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
 
     ### ================== Add Miner server config
     ### Regional A record
     global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-      --value="${EXTERNAL_IP}" --domain="pool.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-      --project="${GCP_INFRA_PROJECT}"
+      --value="${SERVER_IP}" --domain="pool.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
     
-    if [[ "$IN_LOCATION" == "europe" ]]; then
+    ### ================== Add Parent config
+    if [[ "$SERVER_LOCATION" == "europe" ]]; then
       ### Parent Electrumx record
       global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-        --value="${EXTERNAL_IP}" --domain="electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-        --project="${GCP_INFRA_PROJECT}"
+        --value="${SERVER_IP}" --domain="electrumx.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
 
       ### Parent Explorer record
       global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-        --value="${EXTERNAL_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-        --project="${GCP_INFRA_PROJECT}"
+        --value="${SERVER_IP}" --domain="${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
 
       ### Parent Miner record
       global-ecosystem/scripts/dns-record.sh --cf --name="bitcoin-global.io" --type="A" \
-        --value="${EXTERNAL_IP}" --domain="pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io" \
-        --project="${GCP_INFRA_PROJECT}"
+        --value="${SERVER_IP}" --domain="pool.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io"
     fi
 
   wait_for_node: &wait_for_node |
     ### Loop until ready
     echo "Waiting until VM operational..."
     counter=0
-    until gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT --command 'echo'; do
+    until ssh -t -o StrictHostKeyChecking=no root@${SERVER_IP} 'echo'; do
         counter=$((counter+1))
         if [[ "$counter" -gt 120 ]]; then
             echo "Timed out!"
@@ -156,7 +117,7 @@ meta:
     - export BTC_VERSION=${BITCOIN_VERSION}
     - export BTC_RELEASE=${BITCOIN_RELEASE}
     - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global.private"
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
     - (( grab meta.configure_shared ))
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -170,7 +131,7 @@ meta:
     - export BTC_VERSION=${BITCOIN_UPDATE_VERSION}
     - export BTC_RELEASE=${BITCOIN_UPDATE_RELEASE}
     - export REPO_GIT_LOCATION="bitcoin-global/bitcoin-global"
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
     - (( grab meta.configure_shared ))
     - (( grab meta.prepare_node ))
     - (( grab meta.configure_git ))
@@ -179,34 +140,17 @@ meta:
     - exit
     - EOF
 
-  stop_node: &stop_node |
-    ### Stop node
-    ./global-ecosystem/scripts/remove-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE"
-
   restart_node: &restart_node |
-    ### Stop node
-    ./global-ecosystem/scripts/remove-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE"
+    ssh -o -t StrictHostKeyChecking=no root@${SERVER_IP} 'sudo systemctl reboot'
 
-    ### Start VM
-    ./global-ecosystem/scripts/add-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE" \
-      --size="$NODE_SIZE" \
-      --disk-size="$NODE_DISK_SIZE" \
-      --disk-type="$NODE_DISK_TYPE" \
-      --tags="bitcoin-global,bitcoin-$NODE_TYPE" \
-      --static-ip
-
-  destroy_node: &destroy_node |
-    ### Destroy node
-    ./global-ecosystem/scripts/remove-vm.sh \
-      --name="$NODE_NAME" \
-      --zone="$NODE_ZONE" \
-      --destroy
+  shared_task: &shared_task
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
+    - (( grab meta.shared_cmd ))
+    - exit
+    - EOF
+  
+  shared_cmd: &shared_cmd |
+    echo "HI from ${SERVER_LOCATION}"
 
   deploy_bitcoin: &deploy_bitcoin |
     ### Install Bitcoin
@@ -222,7 +166,7 @@ meta:
     upnp=1
     txindex=1
 
-    dbcache=3072
+    dbcache=8192
     par=-1
     checkblocks=24
     checklevel=0
@@ -278,7 +222,7 @@ meta:
     echo "Service restarted! Success!"
 
   electrum_op: &electrum_op
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
     - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_electrum ))
@@ -286,7 +230,7 @@ meta:
     - EOF
 
   explorer_op: &explorer_op
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
     - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_explorer ))
@@ -294,7 +238,7 @@ meta:
     - EOF
 
   miner_op: &miner_op
-    - gcloud beta compute ssh --zone $NODE_ZONE $NODE_NAME --project $GCP_PROJECT << EOF
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
     - (( grab meta.configure_shared ))
     - (( grab meta.configure_git ))
     - (( grab meta.deploy_miner ))
@@ -314,8 +258,8 @@ meta:
     ### Generate SSL
     touch ~/.rnd
     cd /etc/
-    mkdir -p electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
-    cd electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
+    mkdir -p electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
+    cd electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
 
     openssl genrsa -out server.key 2048
     openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
@@ -327,10 +271,10 @@ meta:
     DAEMON_URL=http://${BITCOIN_RPC_USERNAME}:${BITCOIN_RPC_PASSWORD}@127.0.0.1:18444/
     COIN=BitcoinGlobal
     NET=${BITCOIN_NETWORK_TYPE}net
-    SSL_CERTFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.crt
-    SSL_KEYFILE=/etc/electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.key
+    SSL_CERTFILE=/etc/electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.crt
+    SSL_KEYFILE=/etc/electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/server.key
     SERVICES=TCP://:50001,SSL://:50002,TCP://:51001,SSL://:51002,rpc://
-    REPORT_SERVICES=TCP://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001,SSL://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,TCP://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51001,SSL://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
+    REPORT_SERVICES=TCP://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001,SSL://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,TCP://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51001,SSL://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
     ALLOW_ROOT=1
     SRVCCFG
 
@@ -368,26 +312,26 @@ meta:
     npm install pm2 --global
 
     ### Deploy certificates for regional server
-    if [ ! -f /etc/letsencrypt/live/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem ]; then
+    if [ ! -f /etc/letsencrypt/live/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem ]; then
       certbot --nginx --agree-tos -n $CERT_TYPE \
-        -d explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io \
+        -d explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io \
         -m admin@bitcoin-global.io
     fi
 
     ### Create nginx config
-    cat <<CERTS > /etc/nginx/sites-available/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
+    cat <<CERTS > /etc/nginx/sites-available/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
     server {
-      server_name explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+      server_name explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
       listen 80;
       #listen [::]:80 ipv6only=on;
 
       location / {
-        return 301 https://explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io$request_uri;
+        return 301 https://explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io$request_uri;
       }
     }
 
     server {
-      server_name explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
+      server_name explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io;
       listen 443 ssl http2;
       #listen [::]:443 ssl http2 ipv6only=on;
 
@@ -397,8 +341,8 @@ meta:
       ssl_session_cache shared:SSL:10m;
       ssl_dhparam /etc/ssl/certs/dhparam.pem;
 
-      ssl_certificate     /etc/letsencrypt/live/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem;
-      ssl_certificate_key /etc/letsencrypt/live/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/privkey.pem;
+      ssl_certificate     /etc/letsencrypt/live/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem;
+      ssl_certificate_key /etc/letsencrypt/live/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/privkey.pem;
 
       location / {
         proxy_pass http://localhost:3002;
@@ -408,17 +352,17 @@ meta:
     CERTS
 
     ### Parent Explorer config
-    if [[ "$IN_LOCATION" == "europe" ]]; then
+    if [[ "$SERVER_LOCATION" == "europe" ]]; then
       if [ ! -f /etc/letsencrypt/live/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io/cert.pem ]; then
         certbot --nginx --agree-tos -n $CERT_TYPE \
           -d ${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io \
           -m admin@bitcoin-global.io
       fi
 
-      cp /etc/nginx/sites-available/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf \
+      cp /etc/nginx/sites-available/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf \
          /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
 
-      sed -i 's/explorer.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net/${BITCOIN_NETWORK_TYPE}net/g' /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
+      sed -i 's/explorer.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net/${BITCOIN_NETWORK_TYPE}net/g' /etc/nginx/sites-available/${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io.conf
     fi
 
     ### Enable nginx mapping
@@ -450,7 +394,7 @@ meta:
     BGEXP_BITGLOBD_USER=${BITCOIN_RPC_USERNAME}
     BGEXP_BITGLOBD_PASS=${BITCOIN_RPC_PASSWORD}
     BGEXP_ADDRESS_API=electrumx
-    BGEXP_ELECTRUMX_SERVERS=ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,ssl://electrumx.${IN_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
+    BGEXP_ELECTRUMX_SERVERS=ssl://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,ssl://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
     BGEXP_RPC_CONCURRENCY=64
     BGEXP_PRIVACY_MODE=false
     CONFIG

@@ -3,9 +3,37 @@ require 'yaml'
 require 'json'
 require 'ostruct'
 
+### ---------- Infrastructure environment information base on .env/nodes.yml data
+def environment_information(environments)
+  details = ""
+  for environment in environments do
+    details += "# Environment #{environment.type}net\n\n"
+    details += "Instance name | Public IP | ElectrumX | Explorer | Mining pool\n"
+    details += "--- | --- | --- | --- | ---\n"
+    for node in environment.servers do
+      details += "\`#{environment.type}--#{node.location}\`"
+      details += " | [#{node.ip}](#{node.ip})"
+      details += " | [electrumx.#{node.location}.#{environment.type}net.bitcoin-global.io](electrumx.#{node.location}.#{environment.type}net.bitcoin-global.io)"
+      details += " | [explorer.#{node.location}.#{environment.type}net.bitcoin-global.io](https://explorer.#{node.location}.#{environment.type}net.bitcoin-global.io)"
+      details += " | [pool.#{node.location}.#{environment.type}net.bitcoin-global.io:#{environment.miner_port}](http://pool.#{node.location}.#{environment.type}net.bitcoin-global.io:#{environment.miner_port})"
+      details += "\n"
+    end
+    details += "\nMain servers (in Europe):\n"
+    details += "* **ElectrumX** - [electrumx.#{environment.type}net.bitcoin-global.io](http://electrumx.#{environment.type}net.bitcoin-global.io)\n"
+    details += "* **Explorer** - [#{environment.type}net.bitcoin-global.io](https://#{environment.type}net.bitcoin-global.io)\n"
+    details += "* **Mining pool** - [pool.#{environment.type}net.bitcoin-global.io:#{environment.miner_port}](http://pool.#{environment.type}net.bitcoin-global.io:#{environment.miner_port})\n"
+    details += "\n\n\`Note\` - All **ElectrumX** servers exposed publicly on SSL ports on \`{50001, 50002, 51001, 51002}\`"
+
+    details += "\n---\n"
+  end
+  # Return data
+  details
+end
+
 ### ---------- Configs
 env_config_file = File.expand_path(File.dirname(__FILE__) + "../../../../") + '/.env/nodes.yml'
 net_config      = JSON.parse(YAML.load_file(env_config_file).to_json, object_class: OpenStruct)
+env_report      = environment_information(net_config)
 operations      = JSON.parse(YAML.load('
 - id: deploy
   name: deploy-bootstrap
@@ -19,6 +47,8 @@ operations      = JSON.parse(YAML.load('
   name: explorer
 - id: miner
   name: miner
+- id: shared
+  name: shared_operations
 ').to_json, object_class: OpenStruct)
 
 ### ---------- Parse node data

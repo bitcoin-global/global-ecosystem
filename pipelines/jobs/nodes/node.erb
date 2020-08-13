@@ -6,10 +6,6 @@ meta_plan:
     privileged: true
     params:
       # Secrets
-      SSH_PRIVATE_KEY               : ((ssh.private))
-      SSH_PUBLIC_KEY                : ((ssh.public))
-      SSH_USER                      : ((ssh.username))
-      GOOGLE_APPLICATION_CREDENTIALS: /tmp/gcloud.json
       TERM                          : xterm-256color
       OPERATION                     : <%= operation.name %>
       CLOUDFLARE_EMAIL              : hi@residence-of-code.com
@@ -22,7 +18,6 @@ meta_plan:
 
   run-<%= operation.id %>:
     - (( grab meta.configure_git ))
-    - (( grab meta.configure_gcloud ))
     - (( join "\n" meta.<%= operation.id %> ))
 
   trigger-<%= operation.id %>:
@@ -31,7 +26,6 @@ meta_plan:
 
   update-list:
     - (( grab meta.configure_git ))
-    - (( grab meta.configure_gcloud ))
     - (( grab meta.update_nodelist ))
 
 ### Configure triggers
@@ -64,16 +58,7 @@ jobs:
     config:
       platform: linux
       params: 
-        # GCP deployment configuration
-        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
-        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : <%= environment.gcp.project %>
-
         # GCP infra project
-        SERVICE_INFRA_ACCOUNT   : ((gcp.service-account-email))
-        GCLOUD_INFRA_CREDENTIALS: ((gcp.service-account))
-        GCP_INFRA_PROJECT       : bitcoin-global-infra
-
         GIT_FOLDER       : trigger
         GIT_BRANCH       : triggers
         GIT_REPO         : (( grab meta.global-nodes-repository ))
@@ -91,8 +76,8 @@ jobs:
   - put: trigger-<%= environment.type %>
     params: {repository: trigger}
 
-<% environment.gcp.node_locations.each do |node| %>
-- name: <%= environment.type %>--<%= node %>
+<% environment.servers.each do |node| %>
+- name: <%= environment.type %>--<%= node.location %>
   build_logs_to_retain: 3
   serial: true
   plan:
@@ -104,28 +89,16 @@ jobs:
       passed: [trigger-<%= environment.type %>]
     - get: builder
 
-  - task: "[<%= operation.name %>] Node [<%= environment.type %>-<%= node %>]"
+  - task: "[<%= operation.name %>] Node [<%= environment.type %>-<%= node.location %>]"
     <<: *runner-config
     config:
       platform: linux
       params: 
-        # GCP deployment configuration
-        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
-        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : <%= environment.gcp.project %>
-        
-        # GCP infra project
-        SERVICE_INFRA_ACCOUNT   : ((gcp.service-account-email))
-        GCLOUD_INFRA_CREDENTIALS: ((gcp.service-account))
-        GCP_INFRA_PROJECT       : bitcoin-global-infra
-
-        # Node config
-        NODE_NAME     : <%= environment.type %>--<%= node %>-global-node
-        NODE_ZONE     : <%= node %>
-        NODE_TYPE     : <%= environment.type %>
-        NODE_SIZE     : <%= environment.gcp.machine_type %>
-        NODE_DISK_SIZE: <%= environment.gcp.hdd_size %>
-        NODE_DISK_TYPE: pd-standard
+        # Server configuration
+        SSH_PUBLIC_KEY : ((ssh.<%= node.ssh_key %>-public))
+        SSH_PRIVATE_KEY: ((ssh.<%= node.ssh_key %>-private))
+        SERVER_IP      : <%= node.ip %>
+        SERVER_LOCATION: <%= node.location %>
 
         # Bitcoin config
         BITCOIN_ENTRYPOINT       : <%= environment.command %>
@@ -168,8 +141,8 @@ jobs:
     - get: trigger-<%= environment.type %>
       trigger: true
       passed:
-      <% environment.gcp.node_locations.each do |node| %>
-      - <%= environment.type %>--<%= node %>
+      <% environment.servers.each do |node| %>
+      - <%= environment.type %>--<%= node.location %>
       <% end %>
     - get: builder
 
@@ -180,22 +153,12 @@ jobs:
       inputs:
         - name: global-nodes
       params: 
-        # GCP deployment configuration
-        SERVICE_ACCOUNT   : ((gcp.<%= environment.gcp.secrets.email %>))
-        GCLOUD_CREDENTIALS: ((gcp.<%= environment.gcp.secrets.gcloud_creds %>))
-        GCP_PROJECT       : <%= environment.gcp.project %>
+        RESULT    : <%= env_report.dump %>
+        SAVE_FILE : "NODES.md"
 
-        # GCP infra project
-        SERVICE_INFRA_ACCOUNT   : ((gcp.service-account-email))
-        GCLOUD_INFRA_CREDENTIALS: ((gcp.service-account))
-        GCP_INFRA_PROJECT       : bitcoin-global-infra
-
-        BITCOIN_NETWORK_TYPE: <%= environment.type %>
+        # Git config
         TRIGGER_OPERATION   : <%= operation.name %>
         TRIGGER_NET         : <%= environment.type %>
-        MINER_PORT          : <%= environment.miner_port %>
-        SAVE_FILE           : <%= environment.type.upcase %>NET-NODES.md
-        NODE_ZONES          : <%= environment.gcp.node_locations.join(',')  %>
         COMMIT_MESSAGE      : "[<%= environment.type %>net] Update node information for <%= operation.name %> action"
       run:
         user: root
@@ -218,8 +181,8 @@ groups:
 - name: <%= environment.type %>
   jobs:
   - trigger-<%= environment.type %>
-  <% environment.gcp.node_locations.each do |node| %>
-  - <%= environment.type %>--<%= node %>
+  <% environment.servers.each do |node| %>
+  - <%= environment.type %>--<%= node.location %>
   <% end %>
   - update-<%= environment.type %>-list
 <% end %>

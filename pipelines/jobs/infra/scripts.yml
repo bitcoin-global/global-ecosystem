@@ -99,26 +99,20 @@ meta:
   deploy_seeders: &deploy_seeders |
     ### Install aditional requirements
     apt-get autoremove -y
-    apt-get install -y nodejs-dev node-gyp libssl1.0-dev
-    apt-get install -y build-essential libboost-all-dev libssl-dev
+    apt-get install -y build-essential libboost-all-dev libssl-dev dnsutils
     apt-get install -y libcurl4-openssl-dev libconfig++-dev
-    apt-get install -y nodejs-dev node-gyp libssl1.0-dev
+    apt-get install -y node-gyp
     apt-get install -f -y npm
-    apt-get install -y python python-setuptools
+    apt-get install -y python python-setuptools python3-pip python-pip
     python3 -m pip install cffi
+    python -m pip install cloudflare
     npm install pm2 --global
-
-    git clone https://github.com/cloudflare/python-cloudflare
-    cd python-cloudflare
-    ./setup.py build
-    ./setup.py install
-    cd ..
-    rm -rf python-cloudflare
-
+  
     ### Install DNS seeder
     MAINNET_IP=\$(dig +short mainnet.bitcoin-global.io)
     TESTNET_IP=\$(dig +short testnet.bitcoin-global.io)
     
+    rm -rf /testnet-seeder /mainnet-seeder
     git clone https://github.com/team-exor/generic-seeder /testnet-seeder
     git clone https://github.com/team-exor/generic-seeder /mainnet-seeder
     cd /testnet-seeder && make
@@ -194,8 +188,8 @@ meta:
     pm2 start /mainnet-seeder/dnsseed --name "mainnet-seeder" || echo "Already on the list"
     pm2 save
 
-    crontab -u root -l | grep -v '/testnet-seeder'  | crontab -u root -
-    crontab -u root -l | grep -v '/mainnet-seeder'  | crontab -u root -
+    crontab -u root -l | grep -v '/testnet-seeder'  | crontab -u root - || echo "Empty"
+    crontab -u root -l | grep -v '/mainnet-seeder'  | crontab -u root - || echo "Empty"
     (crontab -l 2>/dev/null; echo "*/10 * * * * cd /testnet-seeder/cf-uploader && python seeder.py") | crontab -
     (crontab -l 2>/dev/null; echo "*/10 * * * * cd /mainnet-seeder/cf-uploader && python seeder.py") | crontab -
 
@@ -216,7 +210,7 @@ meta:
   deploy-landing-page: &deploy-landing-page |
     ### Install requirements
     apt update -y && apt upgrade -y
-    apt install -y git software-properties-common nginx gcc g++ make python3-pip
+    apt install -y git software-properties-common nginx gcc g++ make python3-pip psmisc
     add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
     apt install -y python-certbot-nginx
