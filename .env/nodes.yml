@@ -25,10 +25,9 @@
     - location: europe
       ssh_key: hivemindf
       ip: 62.210.178.209
-    # Managed by GCP
     - location: us
       ssh_key: hivemindf
-      ip: 35.209.184.27
+      ip: 173.0.57.186
 
   # Monitoring
   monitoring:
