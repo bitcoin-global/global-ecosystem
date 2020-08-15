@@ -134,8 +134,8 @@ meta:
     explorer_requery_seconds="60"
     block_count="1780319"
     seed_1="\$TESTNET_IP"
-    seed_2=""
-    seed_3=""
+    seed_2="35.215.138.105"
+    seed_3="35.208.105.132"
     seed_4=""
     seed_5=""
     seed_6=""
@@ -166,12 +166,12 @@ meta:
     explorer_requery_seconds="60"
     block_count="638593"
     seed_1="\$MAINNET_IP"
-    seed_2=""
-    seed_3=""
-    seed_4=""
-    seed_5=""
-    seed_6=""
-    seed_7=""
+    seed_2="35.209.184.27"
+    seed_3="35.215.178.52"
+    seed_4="35.213.247.170"
+    seed_5="35.210.156.237"
+    seed_6="139.99.131.156"
+    seed_7="173.0.57.186"
     seed_8=""
     seed_9=""
     seed_10=""
@@ -183,9 +183,22 @@ meta:
     SRVCCFG
 
     ### ==============================
+    cat <<SRVCCFG > /mainnet-seeder/task.sh
+    #!/bin/bash
+    cd /mainnet-seeder && ./dnsseed
+    SRVCCFG
+
+    cat <<SRVCCFG > /testnet-seeder/task.sh
+    #!/bin/bash
+    cd /testnet-seeder && ./dnsseed
+    SRVCCFG
+
+    chmod +x /mainnet-seeder/task.sh
+    chmod +x /testnet-seeder/task.sh
+
     pm2 startup
-    pm2 start /testnet-seeder/dnsseed --name "testnet-seeder" || echo "Already on the list"
-    pm2 start /mainnet-seeder/dnsseed --name "mainnet-seeder" || echo "Already on the list"
+    pm2 start /testnet-seeder/task.sh --name "testnet-seeder" || echo "Already on the list"
+    pm2 start /mainnet-seeder/task.sh --name "mainnet-seeder" || echo "Already on the list"
     pm2 save
 
     crontab -u root -l | grep -v '/testnet-seeder'  | crontab -u root - || echo "Empty"
