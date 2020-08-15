@@ -211,9 +211,10 @@ meta:
     ### Install requirements
     apt update -y && apt upgrade -y
     apt install -y git software-properties-common nginx gcc g++ make python3-pip psmisc
-    add-apt-repository ppa:certbot/certbot -y
+    # add-apt-repository --remove ppa:certbot/certbot -y && add-apt-repository ppa:certbot/certbot -y
     apt update -y && apt upgrade -y
     apt install -y python-certbot-nginx
+    python3 -m pip install certbot-nginx
     python3 -m pip install cffi
 
     ### Prepare
