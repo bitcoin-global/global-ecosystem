@@ -2,8 +2,8 @@
 
 ### =================================================
 ### Global config
-export ELECTRUM_VERSION=4.0.2
-export BITCOIN_VERSION=0.19.2
+export ELECTRUM_VERSION=${ELECTRUM_VERSION}
+export BITCOIN_VERSION=${BITCOIN_VERSION}
 
 ### =================================================
 ### Install GHR
