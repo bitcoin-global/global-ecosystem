@@ -24,9 +24,8 @@ def environment_information(environments)
     details += "* **Mining pool** - [pool.#{environment.type}net.bitcoin-global.io:#{environment.miner_port}](http://pool.#{environment.type}net.bitcoin-global.io:#{environment.miner_port})\n"
     details += "\n\n\`Note\` - All **ElectrumX** servers exposed publicly on SSL ports on \`{50001, 50002, 51001, 51002}\`"
 
-    details += "\n\n---\n"
+    details += "\n\n---\n\n"
   end
-  details += "\n\n** Updated on: \`#{Time.now.strftime("%d/%m/%Y %H:%M")}\`\n"
   # Return data
   details
 end

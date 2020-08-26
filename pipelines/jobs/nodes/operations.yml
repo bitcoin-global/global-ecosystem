@@ -261,9 +261,11 @@ meta:
     mkdir -p electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
     cd electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io
 
-    openssl genrsa -out server.key 2048
-    openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
-    openssl x509 -req -days 1825 -in server.csr -signkey server.key -out server.crt
+    if [ ! -f server.key ]; then
+      openssl genrsa -out server.key 2048
+      openssl req -new -key server.key -out server.csr -subj "/C=XX/ST=XX/O=Bitcoin Global/OU=ElectrumX/CN=bitcoin-global.io"
+      openssl x509 -req -days 1825 -in server.csr -signkey server.key -out server.crt
+    fi
 
     ### Generate ElectrumX configuration
     cat <<SRVCCFG > /etc/electrumx.conf
@@ -276,6 +278,8 @@ meta:
     SERVICES=TCP://:50001,SSL://:50002,TCP://:51001,SSL://:51002,rpc://
     REPORT_SERVICES=TCP://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50001,SSL://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:50002,TCP://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51001,SSL://electrumx.${SERVER_LOCATION}.${BITCOIN_NETWORK_TYPE}net.bitcoin-global.io:51002
     ALLOW_ROOT=1
+    COST_SOFT_LIMIT=0
+    COST_HARD_LIMIT=0
     SRVCCFG
 
     cat <<SRVCCFG > /etc/systemd/system/electrumx.service

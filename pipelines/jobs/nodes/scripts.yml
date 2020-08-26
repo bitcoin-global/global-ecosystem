@@ -14,12 +14,16 @@ meta:
     git diff-index --quiet HEAD || git commit -m "$COMMIT_MESSAGE"
 
   update_nodelist: &update_nodelist |
+    ### Get timestamp
+    timestamp=$(date '+%d/%m/%Y %H:%M:%S')
+
     ### Update nodelist data
     cd ./global-nodes
     echo "Updating node list"
 
     ### Add result
     echo -e "$RESULT" > $SAVE_FILE
+    echo "* Last update: \`$timestamp\`" >> $SAVE_FILE
 
     ### Sync changes
     git fetch && git pull
