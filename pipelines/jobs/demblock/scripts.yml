@@ -2,16 +2,17 @@
 meta:
   setup_vm: &setup_vm
     - (( grab meta.add_domains ))
+    - (( grab meta.servers_ssh ))
     - (( grab meta.wait_for_server ))
     - (( join "\n" meta.setup_server ))
 
-  add_domains: &add_domains: |
+  add_domains: &add_domains |
     global-ecosystem/scripts/dns-record.sh --cf --name="demblock.com" --type="A" \
       --value="${SERVER_IP}" --domain="demblock.com"
     global-ecosystem/scripts/dns-record.sh --cf --name="demblock-tge.com" --type="A" \
       --value="${SERVER_IP}" --domain="demblock-tge.com"
-    global-ecosystem/scripts/dns-record.sh --cf --name="token.demblock-tge.com" --type="A" \
-      --value="${SERVER_IP}" --domain="demblock-tge.com"
+    global-ecosystem/scripts/dns-record.sh --cf --name="demblock-tge.com" --type="A" \
+      --value="${SERVER_IP}" --domain="token.demblock-tge.com"
 
   wait_for_server: &wait_for_server |
     ### Wait until Build VM stable

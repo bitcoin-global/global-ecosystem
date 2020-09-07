@@ -20,6 +20,7 @@ spruce:
       - resources/git.demblock-tge.yml
       - resources/git.token-demblock-tge.yml
       - resources/git.global-ecosystem.yml
+      - resources/docker.builder.yml
   - with_all_in: jobs/demblock/
     regexp: ".*.(yml)"
   to: $tmppipeline
