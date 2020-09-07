@@ -33,6 +33,7 @@ meta:
     - (( grab meta.configure_shared ))
     - (( grab meta.install_pkgs ))
     - (( grab meta.configure_git ))
+    - (( grab meta.configure_nginx ))
     - exit
     - EOF
 
@@ -40,12 +41,170 @@ meta:
     ### Download system dependencies
     echo "Prepare machine"
     apt-get update -y
-    apt install docker.io nginx git curl -y
+    apt install docker.io nginx git curl software-properties-common python3-pip python-certbot-nginx -y
     curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
     chmod +x /usr/local/bin/docker-compose
     
     ### Create backup dir
     mkdir -p /backup
+    
+    cd /etc/ssl/certs
+    if [ ! -f /etc/ssl/certs/dhparam.pem ]; then
+      openssl dhparam -out dhparam.pem 2048
+    fi
+
+
+  configure_nginx: &configure_nginx |
+    ### Configure certificates
+    if [ ! -f /etc/letsencrypt/live/demblock.com/cert.pem ]; then
+      certbot --nginx --agree-tos -n \
+        -d demblock.com \
+        -m admin@demblock.com
+    fi
+
+    if [ ! -f /etc/letsencrypt/live/demblock-tge.com/cert.pem ]; then
+      certbot --nginx --agree-tos -n \
+        -d demblock-tge.com \
+        -m admin@demblock-tge.com
+    fi
+
+    if [ ! -f /etc/letsencrypt/live/token.demblock-tge.com/cert.pem ]; then
+      certbot --nginx --agree-tos -n \
+        -d token.demblock-tge.com \
+        -m admin@demblock-tge.com
+    fi
+
+    ### Configure nginx
+    cat <<'HERE' > /etc/nginx/nginx.conf
+    ##################################################
+    events {
+    }
+
+    http {
+      ################### SHARED CONFIGURATION
+      error_log /etc/nginx/error_log.log warn;
+      client_max_body_size 20m;
+      sendfile on;
+
+      ################### SERVICE APIS DEFINITION
+      upstream frontend-demblock {
+        server localhost:8000;
+      }
+      upstream backend-demblock {
+        server localhost:8001;
+      }
+      upstream frontend-demblock-tge {
+        server localhost:9000;
+      }
+      upstream backend-demblock-tge {
+        server localhost:9001;
+      }
+      upstream token-demblock {
+        server localhost:3000;
+      }
+
+      ################### SERVER CONFIGURATIONS
+      server {
+        server_name backend.demblock.com;
+
+        location / {
+            proxy_pass         http://backend-demblock/;
+            proxy_set_header   Host \$host;
+            proxy_set_header   X-Real-IP \$remote_addr;
+            proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Host \$server_name;
+        }
+      }
+      
+      server {
+        server_name demblock.com;
+        listen 80;
+
+        return 301 https://demblock.com$request_uri;
+      }
+      
+      server {
+        server_name demblock.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/demblock.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/demblock.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+
+        location / {
+          proxy_pass         http://frontend-demblock/;
+          proxy_set_header   Host \$host;
+          proxy_set_header   X-Real-IP \$remote_addr;
+          proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Host \$server_name;
+        }
+      }
+
+      server {
+        server_name backend.demblock-tge.com;
+
+        location / {
+          proxy_pass         http://backend-demblock-tge/;
+          proxy_set_header   Host \$host;
+          proxy_set_header   X-Real-IP \$remote_addr;
+          proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Host \$server_name;
+        }
+      }
+
+      server {
+        server_name demblock-tge.com;
+        listen 80;
+
+        return 301 https://demblock-tge.com$request_uri;
+      }
+      
+      server {
+        server_name demblock-tge.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/demblock-tge.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/demblock-tge.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+
+        location / {
+          proxy_pass         http://frontend-demblock-tge/;
+          proxy_set_header   Host \$host;
+          proxy_set_header   X-Real-IP \$remote_addr;
+          proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Host \$server_name;
+        }
+      }
+
+      server {
+        server_name token.demblock-tge.com;
+        listen 80;
+
+        return 301 https://token.demblock-tge.com$request_uri;
+      }
+
+      server {
+        server_name token.demblock-tge.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/token.demblock-tge.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/token.demblock-tge.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+
+        location / {
+          proxy_pass         http://token-demblock/;
+          proxy_set_header   Host \$host;
+          proxy_set_header   X-Real-IP \$remote_addr;
+          proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Host \$server_name;
+        }
+      }
+    }
+    ##################################################
+    HERE
+
+    ### Restart service
+    service nginx restart
 
   demblock: &demblock
     - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
