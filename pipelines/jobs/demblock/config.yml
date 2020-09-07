@@ -1,0 +1,31 @@
+---
+meta:
+  config-params: &config-params
+    params:
+      #========================================================
+      # Service config
+      GITHUB_TOKEN        : ((git.token))
+      SERVER_IP           : 139.59.130.221
+      SSH_PRIVATE_KEY     : ((ssh.private))
+      SSH_PUBLIC_KEY      : ((ssh.public))
+      SSH_USER            : ((ssh.username))
+      GPG_SIGNER          : ((gpg.signer))
+      GPG_PUBLIC          : ((gpg.public))
+      GPG_PRIVATE         : ((gpg.private))
+      GPG_SUBKEY          : ((gpg.subkey))
+      CLOUDFLARE_EMAIL    : hi@residence-of-code.com
+      CLOUDFLARE_API_TOKEN: ((cf.api-token))
+      TERM                : xterm-256color
+      RELEASE_TYPE        : wlm
+      # Configuration
+      MYSQL_USER      : ((mysql.user))
+      MYSQL_PASSWORD  : ((mysql.pass))
+      MONGODB_USER    : ((mongodb.user))
+      MONGODB_PASSWORD: ((mongodb.pass))
+      MAILER_USER     : ((mailer.user))
+      MAILER_PASSWORD : ((mailer.pass))
+      #====================================================== = 
+      # Monitoring
+      DEMBLOCK_REPO      : (( grab meta.demblock-repository ))
+      DEMBLOCK_TGE_REPO  : (( grab meta.demblock-tge-repository ))
+      DEMBLOCK_TOKEN_REPO: (( grab meta.token-demblock-tge-repository ))

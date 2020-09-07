@@ -1,0 +1,10 @@
+---
+resources:
+- name: demblock
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.demblock-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: master

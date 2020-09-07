@@ -1,0 +1,10 @@
+---
+resources:
+- name: token-demblock-tge
+  type: git
+  icon: github
+  source:
+    uri: (( grab meta.token-demblock-tge-repository ))
+    username: ((git.username))
+    password: ((git.password))
+    branch: master

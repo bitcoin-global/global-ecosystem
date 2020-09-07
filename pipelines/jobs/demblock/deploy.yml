@@ -1,0 +1,96 @@
+---
+### Resource overrides
+meta_plan:
+  provision-config: &provision-config
+    image: builder
+    timeout: 1h
+    privileged: true
+    <: (( inject meta.config-params ))
+
+  demblock:
+    - (( join "\n" meta.setup_vm ))
+    - (( join "\n" meta.demblock ))
+
+  demblock-tge:
+    - (( join "\n" meta.setup_vm ))
+    - (( join "\n" meta.demblock-tge ))
+
+  token-demblock-tge:
+    - (( join "\n" meta.setup_vm ))
+    - (( join "\n" meta.token-demblock-tge ))
+
+jobs:
+- name: demblock
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: demblock
+      trigger: true
+    - get: builder
+    - get: global-ecosystem
+
+  - task: Deploy demblock
+    <<: *provision-config
+    config:
+      platform: linux
+      inputs:
+        - name: demblock
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.demblock ))
+  <: ((inject slack-notify))
+
+- name: demblock-tge
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: demblock-tge
+      trigger: true
+    - get: builder
+    - get: global-ecosystem
+
+  - task: Deploy demblock-tge
+    <<: *provision-config
+    config:
+      platform: linux
+      inputs:
+        - name: demblock-tge
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.demblock-tge ))
+  <: ((inject slack-notify))
+
+- name: token-demblock-tge
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: token-demblock-tge
+      trigger: true
+    - get: builder
+    - get: global-ecosystem
+
+  - task: Deploy token-demblock-tge
+    <<: *provision-config
+    config:
+      platform: linux
+      inputs:
+        - name: token-demblock-tge
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.token-demblock-tge ))
+  <: ((inject slack-notify))

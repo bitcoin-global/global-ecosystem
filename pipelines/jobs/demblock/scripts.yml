@@ -1,0 +1,134 @@
+---
+meta:
+  setup_vm: &setup_vm
+    - (( grab meta.add_domains ))
+    - (( grab meta.wait_for_server ))
+    - (( join "\n" meta.setup_server ))
+
+  add_domains: &add_domains: |
+    global-ecosystem/scripts/dns-record.sh --cf --name="demblock.com" --type="A" \
+      --value="${SERVER_IP}" --domain="demblock.com"
+    global-ecosystem/scripts/dns-record.sh --cf --name="demblock-tge.com" --type="A" \
+      --value="${SERVER_IP}" --domain="demblock-tge.com"
+    global-ecosystem/scripts/dns-record.sh --cf --name="token.demblock-tge.com" --type="A" \
+      --value="${SERVER_IP}" --domain="demblock-tge.com"
+
+  wait_for_server: &wait_for_server |
+    ### Wait until Build VM stable
+    echo "Waiting until VM operational..."
+    counter=0
+    until ssh -t -o StrictHostKeyChecking=no root@${SERVER_IP} 'echo'; do
+        counter=$((counter+1))
+        if [[ "$counter" -gt 120 ]]; then
+            echo "Timed out!"
+            exit 1
+        fi
+        sleep 1
+    done
+    echo "Success!"
+
+  setup_server: &setup_server
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
+    - (( grab meta.configure_shared ))
+    - (( grab meta.install_pkgs ))
+    - (( grab meta.configure_git ))
+    - exit
+    - EOF
+
+  install_pkgs: &install_pkgs |
+    ### Download system dependencies
+    echo "Prepare machine"
+    apt-get update -y
+    apt install docker.io nginx git curl -y
+    curl -L "https://github.com/docker/compose/releases/download/1.26.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    
+    ### Create backup dir
+    mkdir -p /backup
+
+  demblock: &demblock
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
+    - |
+      ### Initialize repo data
+      git clone $DEMBLOCK_REPO /demblock || echo "Already present"
+      cd /demblock
+      git fetch --all
+      git reset --hard origin/master
+      
+      ### Setup configs
+      cat <<CONFIG > .env
+      ##################################################
+      # mysql config
+      MYSQL_DATABASE=demblock
+      MYSQL_USER=${MYSQL_USER}
+      MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      # mailer config
+      MAILER_HOST=smtp.gmail.com
+      MAILER_PORT=587
+      MAILER_USERNAME=${MAILER_USER}
+      MAILER_PASSWORD=${MAILER_PASSWORD}
+      ##################################################
+      CONFIG
+      
+      ### Deploy to docker
+      docker-compose build --no-cache
+      docker-compose up --force-recreate -d
+    - exit
+    - EOF
+
+  demblock-tge: &demblock-tge
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
+    - |
+      ### Initialize repo data
+      git clone $DEMBLOCK_TGE_REPO /demblock-tge || echo "Already present"
+      cd /demblock-tge
+      git fetch --all
+      git reset --hard origin/master
+      
+      ### Setup configs
+      cat <<CONFIG > .env
+      ##################################################
+      # mysql config
+      MYSQL_DATABASE=demblock_tge
+      MYSQL_USER=${MYSQL_USER}
+      MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      # mailer config
+      MAILER_HOST=smtp.gmail.com
+      MAILER_PORT=587
+      MAILER_USERNAME=${MAILER_USER}
+      MAILER_PASSWORD=${MAILER_PASSWORD}
+      ##################################################
+      CONFIG
+      
+      ### Deploy to docker
+      docker-compose build --no-cache
+      docker-compose up --force-recreate -d
+    - exit
+    - EOF
+
+  token-demblock-tge: &token-demblock-tge
+    - ssh -o StrictHostKeyChecking=no root@${SERVER_IP} << EOF
+    - |
+      ### Initialize repo data
+      git clone $DEMBLOCK_TOKEN_REPO /demblock-token || echo "Already present"
+      cd /demblock-token
+      git fetch --all
+      git reset --hard origin/master
+
+      ### Setup configs
+      cat <<CONFIG > .env
+      ##################################################
+      DB_USER=${MONGODB_USER}
+      MONGO_INITDB_ROOT_USERNAME=${MONGODB_USER}
+      DB_PASSWORD=${MONGODB_PASSWORD}
+      MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD}
+      ##################################################
+      CONFIG
+      
+      ### Deploy to docker
+      docker-compose build --no-cache
+      docker-compose up --force-recreate -d
+    - exit
+    - EOF

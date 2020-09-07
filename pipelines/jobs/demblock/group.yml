@@ -1,0 +1,7 @@
+---
+groups:
+- name: demblock
+  jobs:
+  - demblock
+  - demblock-tge
+  - token-demblock-tge

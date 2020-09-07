@@ -11,3 +11,7 @@ meta:
   global-explorer-repository: https://github.com/bitcoin-global/explorer.git
   global-io-repository: https://github.com/bitcoin-global/bitcoin-global.io.git
   global-electrum-repository: https://github.com/bitcoin-global/global-electrum.git
+  # demblock
+  demblock-repository: https://github.com/NedimRenesalis/demblock.git
+  demblock-tge-repository: https://github.com/NedimRenesalis/demblock-tge.git
+  token-demblock-tge-repository: https://github.com/NedimRenesalis/token-demblock-tge.git
