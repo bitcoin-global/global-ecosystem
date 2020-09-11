@@ -269,7 +269,7 @@ meta:
     echo -e "## **Mainnet** IBD status\n\n" > IBD-STATUS.md
     echo "Node | Block" >> IBD-STATUS.md
     echo "--- | ---" >> IBD-STATUS.md
-    declare -a locations=("asia" "australia" "europe" "us")
+    declare -a locations=("europe")
     for location in "${locations[@]}"
     do
       SERVER_IP=$(dig +short explorer.$location.mainnet.bitcoin-global.io)
