@@ -53,7 +53,6 @@ meta:
       openssl dhparam -out dhparam.pem 2048
     fi
 
-
   configure_nginx: &configure_nginx |
     ### Configure certificates
     if [ ! -f /etc/letsencrypt/live/demblock.com/cert.pem ]; then
@@ -106,6 +105,18 @@ meta:
       ################### SERVER CONFIGURATIONS
       server {
         server_name backend.demblock.com;
+        listen 80;
+
+        return 301 https://\$host\$request_uri;
+      }
+      
+      server {
+        server_name backend.demblock.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/backend.demblock.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/backend.demblock.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
 
         location / {
             proxy_pass         http://backend-demblock/;
@@ -120,7 +131,7 @@ meta:
         server_name demblock.com;
         listen 80;
 
-        return 301 https://demblock.com$request_uri;
+        return 301 https://\$host\$request_uri;
       }
       
       server {
@@ -142,21 +153,33 @@ meta:
 
       server {
         server_name backend.demblock-tge.com;
+        listen 80;
+
+        return 301 https://\$host\$request_uri;
+      }
+      
+      server {
+        server_name backend.demblock-tge.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/backend.demblock-tge.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/backend.demblock-tge.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
 
         location / {
-          proxy_pass         http://backend-demblock-tge/;
-          proxy_set_header   Host \$host;
-          proxy_set_header   X-Real-IP \$remote_addr;
-          proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
-          proxy_set_header   X-Forwarded-Host \$server_name;
+            proxy_pass         http://backend-demblock-tge/;
+            proxy_set_header   Host \$host;
+            proxy_set_header   X-Real-IP \$remote_addr;
+            proxy_set_header   X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Host \$server_name;
         }
       }
-
+      
       server {
         server_name demblock-tge.com;
         listen 80;
 
-        return 301 https://demblock-tge.com$request_uri;
+        return 301 https://\$host\$request_uri;
       }
       
       server {
@@ -180,7 +203,7 @@ meta:
         server_name token.demblock-tge.com;
         listen 80;
 
-        return 301 https://token.demblock-tge.com$request_uri;
+        return 301 https://\$host\$request_uri;
       }
 
       server {
