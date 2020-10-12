@@ -112,7 +112,9 @@ meta:
 
       server {
         server_name demblock-tge.com;
-        rewrite ^/(.*)\$ http://demblock.com/\$1 permanent;
+        listen 80;
+
+        return 301 https://\$host\$request_uri;
       }
 
       server {
@@ -168,6 +170,17 @@ meta:
           proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Host \$server_name;
         }
+      }
+
+      server {
+        server_name demblock-tge.com;
+        listen 443 ssl;
+
+        ssl_certificate /etc/letsencrypt/live/demblock-tge.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/demblock-tge.com/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+
+        rewrite ^/(.*)\$ https://demblock.com/ permanent;
       }
 
       server {

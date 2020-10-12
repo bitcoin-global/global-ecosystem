@@ -2,6 +2,7 @@
 groups:
 - name: demblock
   jobs:
+  - update-nginx
   - demblock
   - demblock-tge
   - token-demblock-tge

@@ -7,6 +7,9 @@ meta_plan:
     privileged: true
     <: (( inject meta.config-params ))
 
+  nginx:
+    - (( join "\n" meta.setup_vm ))
+
   demblock:
     - (( join "\n" meta.setup_vm ))
     - (( join "\n" meta.demblock ))
@@ -20,6 +23,28 @@ meta_plan:
     - (( join "\n" meta.token-demblock-tge ))
 
 jobs:
+- name: update-nginx
+  build_logs_to_retain: 3
+  serial: true
+  plan:
+  - in_parallel:
+    - get: builder
+    - get: global-ecosystem
+
+  - task: Update nginx
+    <<: *provision-config
+    config:
+      platform: linux
+      inputs:
+        - name: global-ecosystem
+      run:
+        user: root
+        path: bash
+        args:
+          - -exc
+          - (( join "\n" meta_plan.nginx ))
+  <: ((inject slack-notify))
+
 - name: demblock
   build_logs_to_retain: 3
   serial: true
